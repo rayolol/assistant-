@@ -1,0 +1,9 @@
+{
+    "Name": "alex",
+    "Age": "16",
+    "Occupation": ["student"],
+    "Interests": ["Reading", "Traveling", "Music", "Programming"],
+    "hobbies": ["engineering","diy", "video_games", "reading"],
+    "about himself":  "i am a highschool student intrested in robotics and programming, wiht also multiple intrests. i am open to learn anyting. i have a goal to attend a top highschool like MIT"
+    
+}
