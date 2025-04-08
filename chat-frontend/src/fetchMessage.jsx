@@ -18,9 +18,13 @@ export default function Message() {
 
     const fetchmessage = async (message) => {
         try {
-            const response = await api.post('chat', {message}); //change to /chat
-            setResponse(response.data.response); //change to response.data.response
+            const response = await api.post('chat', {message}); //change to /chat, change to response.data.response
+            setResponse(response.data.response);
+            if (response.data.status === "error") {
+                throw new Error(response.data.error);
+            }
         } catch (error) {
+            setResponse(error.message);
             console.error(error)
         }
     };

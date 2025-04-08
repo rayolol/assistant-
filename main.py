@@ -8,20 +8,23 @@ from agents import (
     RunConfig,
 ) 
 from agent import Agents as At
+from agents import RunContextWrapper
 import default_tools as DT
 import json 
 import prompts as P
 from colorama import init
 import traceback
+from dotenv import load_dotenv
 
 # Disable colorama to avoid Windows handle errors
 os.environ["NO_COLOR"] = "1"
 init(autoreset=True, convert=False)
+load_dotenv()
 
 API_KEY = os.getenv("API_KEY")
 MODEL_NAME = os.getenv("MODEL_NAME")
 BASE_URL = os.getenv("BASE_URL")
-os.environ["TOGETHER_API_KEY"] ="dc28e010b5bec5dd6f4ec88878e0cd1edb52f3d6efe132892333f2bb835ef935"
+os.environ["TOGETHER_API_KEY"] = os.getenv("TOGETHER_API_KEY")
 
 
 #load user.json & config.json
@@ -56,7 +59,7 @@ except Exception as e:
 conversation_history = []
 MAX_HISTORY_LENGTH = 10  # Adjust as needed
 
-def build_system_prompt(user_message: str, user_id: str = "user") -> str:
+def build_system_prompt( user_message: str, user_id: str = "user") -> str:
     """
     Retrieve relevant memories from mem0 for the given query
     and return a system prompt string to provide context.
@@ -72,11 +75,14 @@ def build_system_prompt(user_message: str, user_id: str = "user") -> str:
         memories = search_result.get("results", [])
         if not memories:
             return "No relevant memories found."
-            
+        
+        context_memory = []
         memories_str = ""
         for entry in memories:
             if isinstance(entry, dict) and "memory" in entry:
-                memories_str += f"- {entry['memory']}\n id: {entry['id']}\n\n"
+                memories_str += f"ID: {entry['id']} memory: {entry['memory']}\n\n"
+                context_memory.append({"id": entry['id'], "memory": entry['memory']})
+                
                 
         history_str = ""
         if conversation_history:
@@ -85,7 +91,7 @@ def build_system_prompt(user_message: str, user_id: str = "user") -> str:
                 history_str += f"User: {entry['user']}\nAssistant: {entry['assistant']}\n"
         
         system_prompt = f"Recent conversation:\n{history_str}\n\nRelevant memories:\n{memories_str}"
-        return system_prompt
+        return system_prompt, context_memory
     except Exception as e:
         print(f"Error in build_system_prompt: {e}")
         traceback.print_exc()
@@ -112,14 +118,14 @@ async def main():
             
             # Get system prompt with relevant memories
             try:
-                full_prompt = build_system_prompt(user_input, user_id="user")
+                full_prompt, context_memory = build_system_prompt(user_message = user_input, user_id="user")
                 print("System prompt:", full_prompt)
             except Exception as e:
                 print(f"Error building system prompt: {e}")
                 full_prompt = user_input
             
             # Create context object with user_id
-            context = DT.Mem0Context(user_id="user")
+            context = DT.Mem0Context(user_id="user" , recent_memories=context_memory)
             
             # Run the agent with proper context
             try:

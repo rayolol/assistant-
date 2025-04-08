@@ -103,3 +103,65 @@ node_modules/
 yarn-debug.log*
 yarn-error.log*
 
+# Serverless directories
+.serverless/
+
+# FuseBox cache
+.fusebox/
+
+# DynamoDB Local files
+.dynamodb/
+
+# TernJS port file
+.tern-port
+
+# Stores VSCode versions used for testing VSCode extensions
+.vscode-test/
+
+# yarn v2
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# Vim swap files
+*.swp
+
+# macOS files
+.DS_Store
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+
+# Gradle
+.gradle/
+build/
+
+# Maven
+target/
+
+# Gradle Wrapper
+gradle/wrapper/gradle-wrapper.properties
+
+# Gradle Dependencies
+gradle/dependencies/
+
+# Gradle Test Results
+gradle/test-results/
+
+# Gradle Build Output
+build/
+
+# Gradle Build Cache
+.gradle/caches/
+
+# Gradle Wrapper
+gradle/wrapper/
+
+# Gradle Dependencies
+gradle/dependencies/

@@ -48,8 +48,8 @@ class Agents:
                name="Main Memory Assistant",
                instructions=P.AGENT_DEFAULT_PROMPT,
                model=self.MODEL_NAME,
-               tools=self.agent_tools,
-               handoffs=[self.coding_handoff, self.tutor_handoff],
+               tools=[],
+               handoffs=[],
                model_settings=self.settings
            ), 
             tool_name_override="back_to_main",
@@ -63,8 +63,8 @@ class Agents:
                name="Tutor Agent",
                instructions=P.TUTOR_AGENT_INSTRUCTIONS,
                model=self.MODEL_NAME,
-               tools=self.agent_tools,
-               handoffs=[self.back_to_main, self.coding_handoff],
+               tools=[],
+               handoffs=[],
                model_settings=self.settings
            ), 
             tool_name_override="transfer_to_tutor_assistant",
@@ -78,7 +78,7 @@ class Agents:
                instructions=P.CODING_AGENT_INSTRUCTIONS,
                name="Coding Assistant",
                model=self.MODEL_NAME,
-               tools=self.agent_tools,
+               tools=[],
                handoffs=[],
                model_settings=self.settings
            ),
@@ -103,7 +103,7 @@ class Agents:
                instructions=P.CODING_AGENT_INSTRUCTIONS,
                name="Coding Assistant",
                model=self.MODEL_NAME,
-               tools=self.agent_tools,
+               tools= [DT.add_to_memory, DT.search_memory, DT.get_all_memory, DT.update_memory, DT.delete_memory],
                handoffs=[self.back_to_main, self.tutor_handoff],
                model_settings=self.settings
            )
@@ -118,7 +118,7 @@ class Agents:
                name="Main Memory Assistant",
                instructions=P.AGENT_DEFAULT_PROMPT,
                model=self.MODEL_NAME,
-               tools=self.agent_tools,
+               tools= [DT.add_to_memory, DT.search_memory, DT.get_all_memory, DT.update_memory, DT.delete_memory],
                handoffs=[self.coding_handoff, self.tutor_handoff],
                model_settings=self.settings
            )
@@ -133,7 +133,7 @@ class Agents:
             name="Tutor Agent",
             instructions=P.TUTOR_AGENT_INSTRUCTIONS,
             model=self.MODEL_NAME,
-            tools=self.agent_tools,
+            tools= [DT.add_to_memory, DT.search_memory, DT.get_all_memory, DT.update_memory, DT.delete_memory],
             handoffs=[self.back_to_main, self.coding_handoff],
             model_settings=self.settings
         )

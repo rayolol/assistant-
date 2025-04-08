@@ -115,6 +115,3 @@ FastAPI automatically generates interactive API documentation. Once the server i
 - `config.json`: Configuration for the memory system
 - `user.json`: User-specific configuration
 - `test_api.py`: Script to test the API endpoints
-=======
-# assistant-
->>>>>>> 407f7f5369ac82afd9fd7254a1abe9fce1dfa489
