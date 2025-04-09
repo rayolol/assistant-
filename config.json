@@ -1,16 +1,17 @@
 {
     "llm" : {
-        "provider": "together",
+        "provider": "gemini",
         "config": {
-            "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
+            "model": "gemini-1.5-flash-latest",
             "temperature": 0.2,
             "max_tokens": 2000
         }
     },
     "embedder" :{
-        "provider": "huggingface",
+        "provider": "gemini",
         "config": {
-            "model": "multi-qa-MiniLM-L6-cos-v1"
+            "model": "models/text-embedding-004",
+            "embedding_dims": 384
         }
     },
     "graph_store": {

@@ -1,3 +1,4 @@
+import sys
 from mem0 import Memory
 import os
 import asyncio
@@ -12,19 +13,21 @@ from agents import RunContextWrapper
 import default_tools as DT
 import json 
 import prompts as P
-from colorama import init
+# Remove colorama imports and initialization
 import traceback
 from dotenv import load_dotenv
 
-# Disable colorama to avoid Windows handle errors
-os.environ["NO_COLOR"] = "1"
-init(autoreset=True, convert=False)
-load_dotenv()
+if not load_dotenv():
+    print("Failed to load environment variables from .env file.")
+    sys.exit(1)
+
+# Remove colorama init and deinit calls
 
 API_KEY = os.getenv("API_KEY")
 MODEL_NAME = os.getenv("MODEL_NAME")
 BASE_URL = os.getenv("BASE_URL")
-os.environ["TOGETHER_API_KEY"] = os.getenv("TOGETHER_API_KEY")
+
+print(MODEL_NAME, BASE_URL)
 
 
 #load user.json & config.json
@@ -70,18 +73,19 @@ def build_system_prompt( user_message: str, user_id: str = "user") -> str:
             
         search_result = memory.search(query=user_message, user_id=user_id, limit=10)
         if not search_result or "results" not in search_result:
-            return "No relevant memories found."
+            return "No relevant memories found.",[]
             
         memories = search_result.get("results", [])
         if not memories:
-            return "No relevant memories found."
+            return "No relevant memories found.",[]
         
         context_memory = []
         memories_str = ""
-        for entry in memories:
+        for i, entry in enumerate(memories):
             if isinstance(entry, dict) and "memory" in entry:
-                memories_str += f"ID: {entry['id']} memory: {entry['memory']}\n\n"
-                context_memory.append({"id": entry['id'], "memory": entry['memory']})
+                memories_str += f"ref: {i + 1} memory: {entry['memory']}\n\n"
+                context_memory.append({"ref": i + 1, "id": entry['id'], "memory": entry['memory']})
+                print(context_memory.__str__())
                 
                 
         history_str = ""
@@ -95,7 +99,7 @@ def build_system_prompt( user_message: str, user_id: str = "user") -> str:
     except Exception as e:
         print(f"Error in build_system_prompt: {e}")
         traceback.print_exc()
-        return "Error retrieving memories."
+        return "Error retrieving memories.",[]
 
 
     
@@ -110,7 +114,7 @@ async def main():
     while True:
         try:
             user_input = input("You: ")
-            if user_input.lower() in ["exit", "quit"]:
+            if user_input.lower().strip() in ["exit", "quit"]:
                 break
             elif user_input.lower() == "history":
                 print_conversation_history()
@@ -167,7 +171,8 @@ async def main():
         except Exception as e:
             print(f"Unexpected error: {e}")
             traceback.print_exc()
-
+            
+            
 def add_to_history(entry: Dict[str, Any]) -> None:
     """Add an entry to conversation history and maintain max length"""
     global conversation_history

@@ -19,6 +19,8 @@ var/
 *.egg-info/
 .installed.cfg
 *.egg
+qudrant_api_key/
+
 
 # Virtual Environment
 venv/

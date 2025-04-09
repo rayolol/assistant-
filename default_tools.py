@@ -22,66 +22,73 @@ class DefaultToolBox:
     
     @staticmethod
     @function_tool
-    def update_memory(context: RunContextWrapper[Mem0Context],existing_memory: str = "", updated_content: str = "") -> str:
+    def update_memory(context: RunContextWrapper[Mem0Context], existing_memory_ref: int, updated_content: str = "") -> str:
         """
         Update a message in Mem0
         Arg:
-            existing_message: The existing message to update.
-            updated_content: The new content for the message.
-            the words mush match exactly
+            existing_memory_ref: The reference number of the memory to update.
+            updated_content: The new content for the memory.
         """
         try: 
             global memory
             if memory is None:
                 return "Memory system not initialized"
             
-            if not updated_content or updated_content.strip() == "" :
+            if not updated_content or updated_content.strip() == "":
                 return "Cannot update without content"
-            print (context.context.recent_memories)
-            print (existing_memory)
-            print (updated_content)
+            
+            print(f"Attempting to update memory with ref: {existing_memory_ref}")
+            print(f"Available memories: {context.context.recent_memories}")
+            print(f"New content: {updated_content}")
             
             if context.context.recent_memories:
                 for entry in context.context.recent_memories:
-                    if entry["memory"] == existing_memory:
-                        memory.update(entry["id"],updated_content)
-                        return f"Updated message with ID: {entry['id']}"
-                    else:
-                        return "No matching message found in recent memories"
-                        
+                    if entry["ref"] == existing_memory_ref:
+                        print(f"Found matching memory: {entry}")
+                        memory.update(entry["id"], updated_content)
+                        return f"Successfully updated memory from '{entry['memory']}' to '{updated_content}'"
+                return f"No memory found with reference number {existing_memory_ref}"
+            else:
+                return "No memories available to update"
+                    
         except Exception as e:
             print(f"Error in update_memory: {e}")
             traceback.print_exc()
-            return f"Failed to update message: {str(e)}"
+            return f"Failed to update memory: {str(e)}"
     
     @staticmethod
     @function_tool
     def delete_memory(
         context: RunContextWrapper[Mem0Context],
-        existing_memory: str = "",
+        existing_memory_ref: int,
     ) -> str:
         """
         Delete a memory from Mem0
+        by inserting the selected memory ref
+        
         Args:
-            existing_memory: The content of the memory to delete from memory.
-            the words mush match exactly
+            existing_memory_ref: The reference number of the memory to delete.
         """
         try:
             global memory
             if memory is None:
                 return "Memory system not initialized"
-            if not existing_memory or existing_memory.strip() == "":
-                return "Cannot delete without content"
-            print(context.context.recent_memories)
-            print(existing_memory)
+            if existing_memory_ref is None:
+                return "Cannot delete without a reference number"
+            
+            print(f"Attempting to delete memory with ref: {existing_memory_ref}")
+            print(f"Available memories: {context.context.recent_memories}")
 
             if context.context.recent_memories:
                 for entry in context.context.recent_memories:
-                    if entry["memory"].strip().lower() == existing_memory.strip().lower():
+                    if entry["ref"] == existing_memory_ref:
+                        print(f"Found matching memory: {entry}")
                         memory.delete(entry["id"])
-                        return f"delteted memory with ID: {entry['id']}"
-                    else:
-                        return "No matching message found in recent memories"
+                        return f"Successfully deleted memory: '{entry['memory']}'"
+                return f"No memory found with reference number {existing_memory_ref}"
+            else:
+                return "No memories available to delete"
+        
         except Exception as e:
             print(f"Error in delete_memory: {e}")
             traceback.print_exc()
@@ -113,7 +120,8 @@ class DefaultToolBox:
             
             messages = [{"role": "user", "content": content}]
     
-            memory.add(messages, user_id='user')
+            memory.add(messages, user_id='user', metadata={"source": "user_input"})
+            print("memory updated")
             return f"Stored message: {content}"
         except Exception as e:
             print(f"Error in add_to_memory: {e}")
