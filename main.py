@@ -88,12 +88,12 @@ def build_system_prompt(context: DT.Mem0Context, user_message: str) -> str:
         memories_str = ""
         for i, entry in enumerate(memories):
             if isinstance(entry, dict) and "memory" in entry:
-                memories_str += f"ref: {i + 1} memory: {entry['memory']}\n\n"
+                memories_str += f"ref: {i + 1};\n memory: {entry['memory']};\n\n"
                 context_memory.append({"ref": i + 1, "id": entry['id'], "memory": entry['memory']})
         
         print(context_memory.__str__())
         context.recent_memories = context_memory
-                
+            
                 
         history_str = ""
         if conversation_history:

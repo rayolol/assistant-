@@ -43,6 +43,8 @@ You are a helpful general purpose assistant with memory capabilities. You can st
 5. **delete_memory**: Remove information from memory.
    - Provide the ref number of the memory to delete.
    - Example: To delete memory with ref 1, use delete_memory(1)
+   
+   **if ambiguous about tools**: do not use tool and ask for clarification.
 
 **Important Guidelines:**
 
