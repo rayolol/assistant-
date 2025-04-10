@@ -62,7 +62,7 @@ except Exception as e:
 conversation_history = []
 MAX_HISTORY_LENGTH = 10  # Adjust as needed
 
-def build_system_prompt( user_message: str, user_id: str = "user") -> str:
+def build_system_prompt(context: DT.Mem0Context, user_message: str) -> str:
     """
     Retrieve relevant memories from mem0 for the given query
     and return a system prompt string to provide context.
@@ -71,13 +71,18 @@ def build_system_prompt( user_message: str, user_id: str = "user") -> str:
         if not memory:
             return "Memory system unavailable."
             
-        search_result = memory.search(query=user_message, user_id=user_id, limit=10)
+        search_result = memory.search(
+            query=user_message,
+            user_id=context.user_id,
+            agent_id=context.current_agent,
+            run_id=context.session_id,
+            limit=10)
         if not search_result or "results" not in search_result:
-            return "No relevant memories found.",[]
+            return "No relevant memories found."
             
         memories = search_result.get("results", [])
         if not memories:
-            return "No relevant memories found.",[]
+            return "No relevant memories found."
         
         context_memory = []
         memories_str = ""
@@ -85,7 +90,9 @@ def build_system_prompt( user_message: str, user_id: str = "user") -> str:
             if isinstance(entry, dict) and "memory" in entry:
                 memories_str += f"ref: {i + 1} memory: {entry['memory']}\n\n"
                 context_memory.append({"ref": i + 1, "id": entry['id'], "memory": entry['memory']})
-                print(context_memory.__str__())
+        
+        print(context_memory.__str__())
+        context.recent_memories = context_memory
                 
                 
         history_str = ""
@@ -95,21 +102,28 @@ def build_system_prompt( user_message: str, user_id: str = "user") -> str:
                 history_str += f"User: {entry['user']}\nAssistant: {entry['assistant']}\n"
         
         system_prompt = f"Recent conversation:\n{history_str}\n\nRelevant memories:\n{memories_str}"
-        return system_prompt, context_memory
+        return system_prompt
     except Exception as e:
         print(f"Error in build_system_prompt: {e}")
         traceback.print_exc()
-        return "Error retrieving memories.",[]
+        return "Error retrieving memories."
 
 
     
 async def main():
-    global conversation_history
-    conversation_history = []
     agents = At()
     
     print("Memory Assistant initialized. Type 'exit' or 'quit' to end the conversation.")
     print("Type 'history' to see conversation history.")
+
+    # Create a persistent context for the session
+    context = DT.Mem0Context(
+        user_id="user",
+        session_id="1234567890",
+        session_start_time=datetime.now(),
+        conversation_id="1234567890",
+        current_agent="memory_agent"
+    )
 
     while True:
         try:
@@ -117,26 +131,23 @@ async def main():
             if user_input.lower().strip() in ["exit", "quit"]:
                 break
             elif user_input.lower() == "history":
-                print_conversation_history()
+                print_conversation_history(context.chat_history)
                 continue
-            
+                
             # Get system prompt with relevant memories
             try:
-                full_prompt, context_memory = build_system_prompt(user_message = user_input, user_id="user")
+                full_prompt = build_system_prompt(context=context, user_message=user_input)
                 print("System prompt:", full_prompt)
             except Exception as e:
                 print(f"Error building system prompt: {e}")
                 full_prompt = user_input
             
-            # Create context object with user_id
-            context = DT.Mem0Context(user_id="user" , recent_memories=context_memory)
-            
             # Run the agent with proper context
             try:
-                # Create a run config to ensure consistent settings across handoffs
+                # Create a run config
                 run_config = RunConfig(
                     workflow_name="Memory Assistant Workflow",
-                    trace_metadata={"user_id": "user"}
+                    trace_metadata={"user_id": context.user_id}
                 )
                 
                 
@@ -150,20 +161,15 @@ async def main():
                 
                 response_text = result.final_output if hasattr(result, 'final_output') else "No response generated."
                 print("AI:", response_text)
+                
+                # Add to conversation history in context
+                context.add_to_history(user_input, response_text)
+                
             except Exception as e:
                 print(f"Error during agent run: {e}")
                 traceback.print_exc()
                 response_text = "Sorry, I encountered an error processing your request."
                 print("AI:", response_text)
-            
-            # Add to conversation history
-            entry = {
-                "timestamp": datetime.now(),
-                "user": user_input,
-                "assistant": response_text
-            }
-            add_to_history(entry)
-
                 
         except KeyboardInterrupt:
             print("\nExiting...")
@@ -171,29 +177,20 @@ async def main():
         except Exception as e:
             print(f"Unexpected error: {e}")
             traceback.print_exc()
-            
-            
-def add_to_history(entry: Dict[str, Any]) -> None:
-    """Add an entry to conversation history and maintain max length"""
-    global conversation_history
-    conversation_history.append(entry)
-    # Keep only the most recent conversations
-    if len(conversation_history) > MAX_HISTORY_LENGTH:
-        conversation_history = conversation_history[-MAX_HISTORY_LENGTH:]
 
-def print_conversation_history() -> None:
+def print_conversation_history(history: List[DT.ChatMessage]) -> None:
     """Display the conversation history in a readable format"""
-    if not conversation_history:
+    if not history:
         print("No conversation history yet.")
         return
     
     print("\n===== CONVERSATION HISTORY =====")
-    for i, entry in enumerate(conversation_history):
-        time_str = entry["timestamp"].strftime("%H:%M:%S")
+    for i, entry in enumerate(history):
+        time_str = entry.timestamp.strftime("%H:%M:%S")
         print(f"[{time_str}]")
-        print(f"You: {entry['user']}")
-        print(f"AI: {entry['assistant']}")
-        if i < len(conversation_history) - 1:
+        print(f"You: {entry.user}")
+        print(f"AI: {entry.assistant}")
+        if i < len(history) - 1:
             print("-" * 30)
     print("================================\n")
 

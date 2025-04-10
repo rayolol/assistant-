@@ -1,10 +1,10 @@
-# from main import *
-# from fastapi import FastAPI, Request, HTTPException
-# from fastapi.middleware.cors import CORSMiddleware
-# import asyncio
-# import traceback
-# from typing import Dict, Any
-# from pydantic import BaseModel
+from main import *
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+import asyncio
+import traceback
+from typing import Dict, Any
+from pydantic import BaseModel
 
 from slowapi import Limiter, _rate_limit_exceeded_handler
 
@@ -17,6 +17,7 @@ class ChatResponse(BaseModel):
     status: str = "success"
     response: str
     timestamp: str = None
+    content: DT.Mem0Context
     class Config:
         extra = "ignore"
     
@@ -44,7 +45,7 @@ async def agent_response(user_input: str) -> str:
     try:
         # Get system prompt with relevant memories
         try:
-            memory_context, full_prompt = build_system_prompt(user_input, user_id="user")
+            full_prompt = build_system_prompt(user_input, user_id="user")
             print("System prompt:", full_prompt)
         except Exception as e:
             print(f"Error building system prompt: {e}")
