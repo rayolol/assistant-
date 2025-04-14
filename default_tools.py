@@ -15,6 +15,8 @@ class ChatMessage(BaseModel):
     timestamp: datetime | None = None
     role: str
     content: str
+    #tool_calls: List[ToolUsageRecord] = []
+
     def __init__(self, **data):
         if 'timestamp' not in data:
             data['timestamp'] = datetime.now()

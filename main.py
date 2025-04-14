@@ -98,8 +98,6 @@ def build_system_prompt(context: DT.Mem0Context, user_message: str) -> str:
         history_str = ""
         if context.chat_history:
             for entry in context.chat_history:
-                if len(entry) == 0:
-                    print("no coneverstation yet")
                 history_str += f"role: {entry.role}\ncontent: {entry.content}\n"
         
         system_prompt = f"Recent conversation:\n{history_str}\n\nRelevant memories:\n{memories_str}"

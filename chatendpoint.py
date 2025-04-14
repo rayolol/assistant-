@@ -11,6 +11,8 @@ from agents import RunContextWrapper
 import default_tools as DT
 from default_tools import ChatMessage, ToolUsageRecord
 from typing import List, Dict, Any
+from redisCache import RedisCache, ChatSession
+from MongoDB import MongoDB
 
 from slowapi import Limiter, _rate_limit_exceeded_handler
 
@@ -141,34 +143,48 @@ async def root():
         }
     }
 
-# Create a dependency for chat history
-async def get_chat_history(request: ChatRequest = Depends()):
-    # Implement your logic to retrieve chat history
-    conversation_id = request.conversation_id
-    
-    # This could be from a database, Redis, etc.
-    return []  # Replace with actual implementation
-
 @app.post("/chat", response_model=ChatResponse)
 async def chat_endpoint(
     request: ChatRequest
 ) -> ChatResponse:
     """Process a chat message and return the agent's response"""
     try:
+        cache = RedisCache()# Initialize the cache object
+        db = MongoDB()
+        
+        session = ChatSession(
+            user_id=request.user_id,
+            session_id=request.session_id,
+            conversation_id=request.conversation_id
+        )
+        
+        # Get the chat history from the cache or initialize it if it doesn't exist
+        chat_history = await cache.get_chat_history(session) 
+        if not chat_history:
+            chat_history = await cache.load_from_db(session, db)
+            
+        print("retrieved: ", chat_history)
         # Always use memory_agent as the default starting agent
         formatted_context = DT.Mem0Context(
             user_id=request.user_id,
             session_id=request.session_id,
             conversation_id=request.conversation_id,
             current_agent="memory_agent",
-            chat_history=[]  # Initialize with existing history
+            chat_history=chat_history
         )
         
         # Process the message through the agent
         response_obj = await agent_response(context=formatted_context, user_input=request.message)
         
-        # Save the updated chat history to your database or cache here
-        # This is a placeholder - implement your actual history saving logic
+        # Save the updated chat history to the cache
+        message = ChatMessage(
+            role="user",
+            content=request.message,
+            timestamp=datetime.now()
+        )
+        await cache.add_message(session, message)
+        await cache.add_message(session, response_obj["chat_history"][-1])
+        print("added: ", response_obj["chat_history"][-1])
         
         # Create a fresh response object
         chat_response = ChatResponse(
