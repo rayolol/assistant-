@@ -3,6 +3,7 @@ import ChatWindow from '../components/ChatWindow.tsx'
 import InputBox from '../components/InputBox.tsx'
 import { Message } from '../types/message.tsx'
 import { sendMessage } from '../api/api.ts'
+import SideBar from '../components/SideBar.tsx'
 
 export default function Page() {
     const [isTyping, setIsTyping] = useState(false);
@@ -42,13 +43,21 @@ export default function Page() {
     };
 
     return (
-        <main className = "h-screen flex flex-col items-center justify-between bg-gray-900 text-white">
-            <div className = 'max-w-3xl w-full flex-1 p-4 overflow-y-auto'>
-                <ChatWindow message={messages}/>
-                {isTyping && <div className='mt-2 text-gray-400'> Typing...</div>}
+        <div className = "h-screen w-screen flex flex-row">
+        <div className= "bg-gray-800 h-full w-1/4 postion-fixed translate-x-1/4 tansition">
+            <SideBar/>
+        </div> 
+        <main className = "h-screen flex w-screen flex-col items-center justify-between bg-gray-900 text-white">
+           
+            <div>
+                <div className = 'max-w-3xl w-full flex-1 p-4 overflow-y-auto'>
+                    <ChatWindow message={messages}/>
+                    {isTyping && <div className='mt-2 text-gray-400'> Typing...</div>}
+                </div>
+                <InputBox onSendMessage={handleSendMessage} />
             </div>
-            <InputBox onSendMessage={handleSendMessage} />
         </main>
+        </div>
 
     );
 }

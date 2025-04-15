@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, HTTPException, Depends
+from fastapi import FastAPI, Request, HTTPException, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 from main import *
@@ -47,6 +47,28 @@ app.add_middleware(
     allow_methods=["*"],  # Allows all methods
     allow_headers=["*"],  # Allows all headers
 )
+db = MongoDB()
+cache = RedisCache()
+
+async def get_db():
+    try: 
+        if not db.initialized:
+            await db.initialize()
+        return db
+    except Exception as e:
+        print(f"Error in get_db: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    
+async def get_cache():
+    return cache
+
+async def flush_cache_to_db(session: ChatSession, db: MongoDB) -> None:
+    """Flush chat history from Redis to MongoDB"""
+    while(True):
+        await asyncio.sleep(300)
+        await cache.flush_cache_to_DB(session, db)
+        print("flushed")
+        
 
 async def agent_response(context: DT.Mem0Context, user_input: str) -> Dict[str, Any]:
     """Process user input through the agent system and return a comprehensive response object"""
@@ -145,12 +167,13 @@ async def root():
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat_endpoint(
-    request: ChatRequest
+    request: ChatRequest,
+    background_tasks: BackgroundTasks,
+    db: MongoDB = Depends(get_db),
+    cache: RedisCache = Depends(get_cache)
 ) -> ChatResponse:
     """Process a chat message and return the agent's response"""
     try:
-        cache = RedisCache()# Initialize the cache object
-        db = MongoDB()
         
         session = ChatSession(
             user_id=request.user_id,
@@ -170,21 +193,29 @@ async def chat_endpoint(
             session_id=request.session_id,
             conversation_id=request.conversation_id,
             current_agent="memory_agent",
-            chat_history=chat_history
+            chat_history=chat_history if chat_history else []
         )
         
         # Process the message through the agent
         response_obj = await agent_response(context=formatted_context, user_input=request.message)
         
         # Save the updated chat history to the cache
-        message = ChatMessage(
+        user_message = ChatMessage(
             role="user",
             content=request.message,
             timestamp=datetime.now()
         )
-        await cache.add_message(session, message)
-        await cache.add_message(session, response_obj["chat_history"][-1])
+        
+        ai_message = ChatMessage(
+            role="assistant",
+            content=response_obj["response_text"],
+            timestamp=datetime.now()
+        )
+        await cache.add_message(session, user_message)
+        await cache.add_message(session, ai_message)
         print("added: ", response_obj["chat_history"][-1])
+        
+        background_tasks.add_task(flush_cache_to_db, session, db)
         
         # Create a fresh response object
         chat_response = ChatResponse(
@@ -211,8 +242,27 @@ async def chat_endpoint(
             response_metadata={"error_details": error_message},
             chat_history=[]
         )
+        
+@app.get("/conversations/{user_id}")
+async def get_conversations(user_id: str, db: MongoDB = Depends(get_db)):
+    """Get all conversations for a user"""
+    try:
+        conversations = await db.get_conversation(user_id)
+        return conversations
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-# Add this endpoint to debug what's being sent
+app.delete("/conversations/{conversation_id}")
+async def delete_conversation(conversation_id: str, db: MongoDB = Depends(get_db)):
+    """Delete a conversation"""
+    try:
+        await db.delete(conversation_id)
+        return {"message": "Conversation deleted successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+    
+
 @app.post("/debug")
 async def debug_endpoint(request: Request):
     """Debug endpoint to see what's being sent"""

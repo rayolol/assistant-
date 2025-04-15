@@ -105,18 +105,20 @@ class RedisCache:
         key = self.make_key(session)
         
         chat_history_json = await self.redis_client.get(key)
-        if chat_history_json:
+        if not chat_history_json:
             print("no chat history found")
+            return
         
         chat_data = json.loads(chat_history_json)
+        await db.delete(session.conversation_id)
         
         full_chat_history = []
         for msg in chat_data:
-            msg = ChatMessage(**msg)
-            full_chat_history.append(msg)
+            msg_obj = ChatMessage(**msg)
+            full_chat_history.append(msg_obj)
             
         await db.add_message(full_chat_history, session.conversation_id)
-        print("flushed", full_chat_history.__str__())
+        print("flushed", full_chat_history.__str__(),"for conversation", session.conversation_id)
             
     
     
