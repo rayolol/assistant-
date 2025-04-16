@@ -1,7 +1,6 @@
 import redis.asyncio as r  # Import the Redis library
 import json
-from pydantic import BaseModel as baseModel
-from default_tools import ChatMessage, Mem0Context
+from models import ChatMessage, ChatSession, Mem0Context
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta 
 from MongoDB import MongoDB
@@ -9,10 +8,7 @@ import os
 import asyncio
 
 
-class ChatSession(baseModel):
-    user_id: str
-    session_id: str
-    conversation_id: str
+
 
 class RedisCache:
     def __init__(self,Redis_host='localhost',Redis_port=6379,Redis_db=0,session_ttl=3600):
@@ -33,10 +29,13 @@ class RedisCache:
     
     async def get_chat_history(self, session: ChatSession) -> Optional[List[ChatMessage]]:
         """Retrieve the chat history from Redis"""
+        
         key = self.make_key(session)
-        chat_history_json = await self.redis_client.get(key)
-        if chat_history_json:
-            chat_data = json.loads(chat_history_json)
+        
+        history_json = await self.redis_client.get(key)
+        
+        if history_json:
+            chat_data = json.loads(history_json)
             
             messages = [ChatMessage(**msg) for msg in chat_data]
             
@@ -89,7 +88,15 @@ class RedisCache:
             await db.initialize()
             
         history_docs = await db.get_history(session.conversation_id)
-        chat_history = [ChatMessage(**doc) for doc in history_docs]
+        
+        chat_history = []
+        for doc in history_docs:
+            if (isinstance(doc, ChatMessage)):
+                chat_history.append(doc)
+                continue
+            
+            elif isinstance(doc, dict):
+                chat_history.append(ChatMessage(**doc))
         
         chat_history = self.deserialize_history(chat_history)
         

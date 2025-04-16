@@ -3,35 +3,15 @@ from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 from main import *
 import traceback
-from pydantic import BaseModel
 from datetime import datetime
 from agents import Runner, RunConfig
 from agent import Agents as At
-from agents import RunContextWrapper
-import default_tools as DT
-from default_tools import ChatMessage, ToolUsageRecord
-from typing import List, Dict, Any
-from redisCache import RedisCache, ChatSession
+from models import ChatRequest, ChatResponse, ChatSession, Mem0Context
+from redisCache import RedisCache
 from MongoDB import MongoDB
 
 from slowapi import Limiter, _rate_limit_exceeded_handler
 
-class ChatRequest(BaseModel):
-    user_id: str
-    session_id: str
-    conversation_id: str
-    message: str
-    ui_metadata: Dict[str, Any] = {}
-    flags: Dict[str, Any] = {}
-        
-class ChatResponse(BaseModel):
-    status: str = "success"
-    current_agent: str
-    response: str
-    timestamp: str = None
-    response_metadata: Dict[str, Any] = {}
-    tool_calls: List[ToolUsageRecord] = []
-    chat_history: List[ChatMessage] = []
 
     
 app = FastAPI(
@@ -48,19 +28,9 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
-async def agent_response(context: DT.Mem0Context, user_input: str) -> Dict[str, Any]:
+async def agent_response(context: Mem0Context, user_input: str) -> Mem0Context:
     """Process user input through the agent system and return a comprehensive response object"""
     agents = At()
-    
-    response_obj = {
-        "response_text": "",
-        "current_agent": context.current_agent,
-        "previous_agent": context.previous_agent,
-        "timestamp": datetime.now().isoformat(),
-        "tool_calls": [],
-        "chat_history": [],
-        "status": "success"
-    }
 
     try:
         # Get system prompt with relevant memories
@@ -93,14 +63,15 @@ async def agent_response(context: DT.Mem0Context, user_input: str) -> Dict[str, 
             # Add to conversation history
             context.add_to_history(user_message = user_input, assistant_response = response_text)
             
-            # Update response object
-            response_obj["response_text"] = response_text
-            response_obj["current_agent"] = context.current_agent
-            response_obj["previous_agent"] = context.previous_agent
-            response_obj["tool_calls"] = context.tool_usage_history
-            response_obj["chat_history"] = context.chat_history.copy()
-
-            return response_obj
+            response = Mem0Context(
+                user_id=context.user_id,
+                session_id=context.session_id,
+                conversation_id=context.conversation_id,
+                current_agent=context.current_agent,
+                chat_history=context.chat_history.copy()
+            )
+            
+            return response
 
         except Exception as e:
             print(f"Error during agent run: {e}")
@@ -112,24 +83,20 @@ async def agent_response(context: DT.Mem0Context, user_input: str) -> Dict[str, 
             context.add_to_history(user_message = user_input, assistant_response = response_text)
             
             # Update response object with error info
-            response_obj["response_text"] = response_text
-            response_obj["status"] = "error"
-            response_obj["error_details"] = str(e)
-            response_obj["chat_history"] = context.chat_history.copy()
-
-            return response_obj
+            response = Mem0Context(
+                user_id=context.user_id,
+                session_id=context.session_id,
+                conversation_id=context.conversation_id,
+                current_agent=context.current_agent,
+                chat_history=context.chat_history.copy()
+            )
+            return response
 
     except Exception as e:
         error_msg = f"Unexpected error: {e}"
         print(error_msg)
         traceback.print_exc()
-        
-        # Update response object with error info
-        response_obj["response_text"] = error_msg
-        response_obj["status"] = "error"
-        response_obj["error_details"] = str(e)
-        
-        return response_obj
+        raise HTTPException(status_code=500, detail=error_msg)
 
 @app.get("/")
 async def root():
@@ -165,36 +132,20 @@ async def chat_endpoint(
             
         print("retrieved: ", chat_history)
         # Always use memory_agent as the default starting agent
-        formatted_context = DT.Mem0Context(
-            user_id=request.user_id,
-            session_id=request.session_id,
-            conversation_id=request.conversation_id,
-            current_agent="memory_agent",
-            chat_history=chat_history
-        )
+        formatted_context = Mem0Context().receive_chat_request(request)
         
         # Process the message through the agent
         response_obj = await agent_response(context=formatted_context, user_input=request.message)
         
         # Save the updated chat history to the cache
-        message = ChatMessage(
-            role="user",
-            content=request.message,
-            timestamp=datetime.now()
-        )
+        message = response_obj.to_chat_response()
+        
         await cache.add_message(session, message)
-        await cache.add_message(session, response_obj["chat_history"][-1])
-        print("added: ", response_obj["chat_history"][-1])
+        await cache.add_message(session, response_obj.chat_history[-1])
+        print("added: ", response_obj.chat_history)
         
         # Create a fresh response object
-        chat_response = ChatResponse(
-            status=response_obj["status"],
-            current_agent=response_obj["current_agent"],
-            response=response_obj["response_text"],
-            timestamp=datetime.now().isoformat(),
-            tool_calls=response_obj["tool_calls"],
-            chat_history=response_obj["chat_history"]
-        )
+        chat_response = Mem0Context().to_chat_response()
         
         return chat_response
 

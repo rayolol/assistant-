@@ -9,8 +9,8 @@ from agents import (
     RunConfig,
 ) 
 from agent import Agents as At
-from agents import RunContextWrapper
 import default_tools as DT
+from models import ChatMessage, Mem0Context
 import json 
 import prompts as P
 # Remove colorama imports and initialization
@@ -62,7 +62,7 @@ except Exception as e:
 conversation_history = []
 MAX_HISTORY_LENGTH = 10  # Adjust as needed
 
-def build_system_prompt(context: DT.Mem0Context, user_message: str) -> str:
+def build_system_prompt(context: Mem0Context, user_message: str) -> str:
     """
     Retrieve relevant memories from mem0 for the given query
     and return a system prompt string to provide context.
@@ -91,7 +91,6 @@ def build_system_prompt(context: DT.Mem0Context, user_message: str) -> str:
                 memories_str += f"ref: {i + 1};\n memory: {entry['memory']};\n\n"
                 context_memory.append({"ref": i + 1, "id": entry['id'], "memory": entry['memory']})
         
-        print(context_memory.__str__())
         context.recent_memories = context_memory
             
                 
@@ -99,6 +98,7 @@ def build_system_prompt(context: DT.Mem0Context, user_message: str) -> str:
         if context.chat_history:
             for entry in context.chat_history:
                 history_str += f"role: {entry.role}\ncontent: {entry.content}\n"
+                print(history_str)
         
         system_prompt = f"Recent conversation:\n{history_str}\n\nRelevant memories:\n{memories_str}"
         return system_prompt
@@ -116,7 +116,7 @@ async def main():
     print("Type 'history' to see conversation history.")
 
     # Create a persistent context for the session
-    context = DT.Mem0Context(
+    context = Mem0Context(
         user_id="user",
         session_id="1234567890",
         session_start_time=datetime.now(),
@@ -177,7 +177,7 @@ async def main():
             print(f"Unexpected error: {e}")
             traceback.print_exc()
 
-def print_conversation_history(history: List[DT.ChatMessage]) -> None:
+def print_conversation_history(history: List[ChatMessage]) -> None:
     """Display the conversation history in a readable format"""
     if not history:
         print("No conversation history yet.")

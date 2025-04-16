@@ -1,72 +1,13 @@
 """Default tools for the agent"""
 from agents import function_tool, RunContextWrapper
 import traceback
-from pydantic import BaseModel
-from typing import Dict, Any, List, Literal, Optional
-from datetime import datetime
+from models import ToolUsageRecord, Mem0Context
 
 memory = None
 
 def set_memory(mem_instance):
     global memory
     memory = mem_instance
-    
-class ChatMessage(BaseModel):
-    timestamp: datetime | None = None
-    role: str
-    content: str
-    #tool_calls: List[ToolUsageRecord] = []
-
-    def __init__(self, **data):
-        if 'timestamp' not in data:
-            data['timestamp'] = datetime.now()
-        super().__init__(**data)
-
-class ToolUsageRecord(BaseModel):
-    tool_name: str
-    timestamp: datetime = None
-    inputs: Dict[str, Any] = {}
-    success: bool = True
-    output_summary: str = ""
-    
-    def __init__(self, **data):
-        if 'timestamp' not in data:
-            data['timestamp'] = datetime.now()
-        super().__init__(**data)
-
-class Mem0Context(BaseModel):
-    recent_memories: List[Dict[str, Any]] | None = None
-    user_id: str | None = None
-    session_id: str | None = None
-    session_start_time: datetime | None = None
-    conversation_id: str | None = None
-    current_agent: str | None = None
-    previous_agent: str | None = None
-    tool_usage_history: List[ToolUsageRecord] = []
-    response_metrics: Dict[str, Any] = {}
-    chat_history: List[ChatMessage] = []  # Add conversation history directly to context
-    
-    def add_to_history(self, user_message: str, assistant_response: str) -> None:
-        """Add a conversation entry to the history"""
-        user_entry = ChatMessage(
-            timestamp=datetime.now(),
-            role="user",
-            content=user_message
-        )
-        self.chat_history.append(user_entry)
-        
-        assistant_entry = ChatMessage(
-            timestamp=datetime.now(),
-            role="assistant",
-            content=assistant_response
-        )
-        self.chat_history.append(assistant_entry)
-        
-        # Maintain reasonable history length
-        MAX_HISTORY_LENGTH = 10
-        if len(self.chat_history) > MAX_HISTORY_LENGTH:
-            self.chat_history = self.chat_history[-MAX_HISTORY_LENGTH:]
-    
     
 class DefaultToolBox:
     def __init__(self):

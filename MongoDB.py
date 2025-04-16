@@ -2,23 +2,10 @@ from motor.motor_asyncio import AsyncIOMotorClient as MongoClient
 from pydantic import BaseModel
 from datetime import datetime
 from typing import List, Dict
-from default_tools import ChatMessage
+from models import ChatMessage, users, conversations
 from beanie import init_beanie, Document
 
-class users(Document):
-    username: str
-    email: str
-#    password: str
-    created_at: datetime = datetime.now()
-    
-class conversations(Document):
-    user_id: str
-    started_at: datetime = datetime.now()
-    last_active: datetime = datetime.now()
 
-class chat_history(Document):
-    conversation_id: str
-    messages: List[ChatMessage] = []
 
 #Create user
 #user = User(username="alex", email="alex@example.com")
@@ -47,7 +34,7 @@ class MongoDB:
         if not self.initialized:
             await init_beanie(
                 database=self.client[self.db],
-                document_models=[users, conversations, chat_history]
+                document_models=[users, conversations, ChatMessage]
                 )
             self.initialized = True
         return self
@@ -58,7 +45,7 @@ class MongoDB:
         return user.id
     
     async def add_message(self, messages: List[ChatMessage], conversation_id: str):
-        message = chat_history(conversation_id=conversation_id, messages = messages)
+        message = ChatMessage(conversation_id=conversation_id, messages = messages)
         await message.insert()
         
     async def create_conversation(self, user_id: str):
@@ -67,7 +54,7 @@ class MongoDB:
         return conversation.id
         
     async def get_history(self, conversation_id: str):
-        history = await chat_history.find(chat_history.conversation_id == conversation_id).to_list()
+        history = await ChatMessage.find(ChatMessage.conversation_id == conversation_id).to_list()
         print (history)
         return history
     
@@ -76,4 +63,4 @@ class MongoDB:
         return conversation
     
     async def delete(self, conversation_id: str):
-        await chat_history.find(chat_history.conversation_id == conversation_id).delete()
+        await ChatMessage.find(ChatMessage.conversation_id == conversation_id).delete()
