@@ -1,8 +1,8 @@
 
 export type Message = {
-    user_id: string;
+    user_id: string | null;
     session_id: string ;
-    conversation_id: string;
+    conversation_id: string | null;
     role: string;
     content: string;
     timestamp: string;

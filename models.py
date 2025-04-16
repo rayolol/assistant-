@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from beanie import Document, Link, PydanticObjectId
 from datetime import datetime
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 
 
 
@@ -17,9 +17,12 @@ class conversations(Document):
     last_active: datetime = datetime.now()
 
 class ChatSession(BaseModel):
-    user_id: str
+    user_id: Union[str,PydanticObjectId]
     session_id: str
-    conversation_id: str
+    conversation_id: Union[str, PydanticObjectId]
+    class Config:
+        arbitrary_types_allowed = True
+
 
 class ChatMessage(Document):
     conversation_id: Link[conversations]
@@ -29,13 +32,11 @@ class ChatMessage(Document):
     #tool_calls: List[ToolUsageRecord] = []
 
     def __init__(self, **data):
-        # Convert string ID to PydanticObjectId if needed
-        if 'conversation_id' in data and isinstance(data['conversation_id'], str):
+        # Convert ObjectId to string for serialization purposes
+        if 'conversation_id' in data and not isinstance(data['conversation_id'], str):
             try:
-                data['conversation_id'] = PydanticObjectId(data['conversation_id'])
+                data['conversation_id'] = str(data['conversation_id'])
             except Exception:
-                # If it's not a valid ObjectId format, we'll need to handle this differently
-                # Maybe look up the conversation by another field
                 pass
                 
         if 'timestamp' not in data:
@@ -58,7 +59,7 @@ class ToolUsageRecord(BaseModel):
 class Mem0Context(BaseModel):
     """Main data pipeline context for the agent application"""
     recent_memories: List[Dict[str, Any]] | None = None
-    user_id: str | None = None
+    user_id: Union[str | PydanticObjectId] | None = None
     session_id: str | None = None
     session_start_time: datetime | None = None
     conversation_id: str | None = None
@@ -101,20 +102,21 @@ class Mem0Context(BaseModel):
         
     def receive_chat_request(self, chat_request: "ChatRequest") -> "Mem0Context":
         """convert chat request to context"""
-        self.user_id = chat_request.user_id
+        self.user_id = str(chat_request.user_id)
         self.session_id = chat_request.session_id
-        self.conversation_id = chat_request.conversation_id
+        self.conversation_id = str(chat_request.conversation_id)
         return self
 
 class ChatRequest(BaseModel):
-    user_id: str
+    user_id: Optional[str] = None
     session_id: str
-    conversation_id: str
+    conversation_id: Optional[str] = None 
     message: str
     ui_metadata: Dict[str, Any] = {}
     flags: Dict[str, Any] = {}
         
 class ChatResponse(BaseModel):
+    ChatSession: ChatSession 
     status: str = "success"
     current_agent: str
     response: str
@@ -122,3 +124,4 @@ class ChatResponse(BaseModel):
     response_metadata: Dict[str, Any] = {}
     tool_calls: List[ToolUsageRecord] = []
     chat_history: List[ChatMessage] = []
+    

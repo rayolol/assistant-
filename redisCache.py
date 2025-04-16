@@ -27,7 +27,7 @@ class RedisCache:
     def make_key(self, session: ChatSession) -> str:
         return f"session:{session.session_id}"
     
-    async def get_chat_history(self, session: ChatSession) -> Optional[List[ChatMessage]]:
+    async def get_chat_history(self, db: MongoDB, session: ChatSession) -> Optional[List[ChatMessage]]:
         """Retrieve the chat history from Redis"""
         
         key = self.make_key(session)
@@ -37,31 +37,68 @@ class RedisCache:
         if history_json:
             chat_data = json.loads(history_json)
             
-            messages = [ChatMessage(**msg) for msg in chat_data]
+            # Convert the chat data to ChatMessage objects
+            messages = []
+            for msg in chat_data:
+                # If conversation_id is a string representation of a Link object, use the session's conversation_id
+                if 'conversation_id' in msg and isinstance(msg['conversation_id'], str) and '<beanie.odm.fields.Link' in msg['conversation_id']:
+                    msg['conversation_id'] = session.conversation_id
+                
+                try:
+                    messages.append(ChatMessage(**msg))
+                except Exception as e:
+                    print(f"Error creating ChatMessage: {e}")
+                    # Skip this message if it can't be converted
+                    continue
             
             return self.deserialize_history(messages)
         else:
-            return None
-        
-    async def add_message(self, session: ChatSession, message: ChatMessage) -> None:
+            history = await db.get_history(session.conversation_id)
+            
+            return self.deserialize_history(history)
+    
+    async def add_message(self,db: MongoDB, session: ChatSession, message: ChatMessage) -> None:
         """Add a message to the chat history in Redis"""
         key = self.make_key(session)
         # Get current history or initialize empty list
-        current_history = await self.get_chat_history(session) or []
+        current_history = await self.get_chat_history(db, session) or []
         # Add the new message
         current_history.append(message)
         # Serialize the chat history
         serialized_data = self.serialize_history(current_history)
-        await self.redis_client.setex(key,self.session_ttl, json.dumps(serialized_data))
+        await self.redis_client.setex(key, self.session_ttl, json.dumps(serialized_data))
     
     def serialize_history(self, data: List[ChatMessage]) -> Any:
         """Serialize data to JSON string"""
         serialized_data = []
         for m in data:
-            if m.timestamp and isinstance(m.timestamp, datetime):
-                m.timestamp = m.timestamp.isoformat()  # Convert datetime to ISO format string
-                serialized_data.append(m.model_dump())  # Add the serialized message to the list
-                
+            # Create a copy of the message data
+            message_dict = {}
+            
+            # Handle Link objects for conversation_id
+            if hasattr(m, 'conversation_id'):
+                if hasattr(m.conversation_id, '__str__'):
+                    # Store the actual ID value, not the Link object representation
+                    message_dict['conversation_id'] = str(m.conversation_id).replace('ObjectId(\'', '').replace('\')', '')
+                else:
+                    message_dict['conversation_id'] = m.conversation_id
+            
+            # Handle timestamp
+            if hasattr(m, 'timestamp'):
+                if m.timestamp and isinstance(m.timestamp, datetime):
+                    message_dict['timestamp'] = m.timestamp.isoformat()
+                elif m.timestamp and isinstance(m.timestamp, str):
+                    message_dict['timestamp'] = m.timestamp
+                else:
+                    message_dict['timestamp'] = datetime.now().isoformat()
+            
+            # Copy other attributes
+            for attr, value in m.__dict__.items():
+                if attr not in ['conversation_id', 'timestamp', '__pydantic_fields_set__', '__pydantic_extra__', '__pydantic_private__']:
+                    message_dict[attr] = value
+            
+            serialized_data.append(message_dict)
+                    
         return serialized_data
     
     def deserialize_history(self, data: List[ChatMessage]) -> List[ChatMessage]:
@@ -69,15 +106,19 @@ class RedisCache:
         deserialized_data = []
         
         for m in data:
-            try: 
-                if m.timestamp and isinstance(m.timestamp, str):
-                    m.timestamp = datetime.fromisoformat(m.timestamp)  # Convert ISO format string back to datetime
-            except ValueError as e:
-                print(f"Error parsing timestamp: {e}")
-                m.timestamp = datetime.now()  # Fallback to current time if parsing fails
-                
-            deserialized_data.append(m) 
-            # Add the deserialized message to the list
+            try:
+                # Handle timestamp conversion
+                if hasattr(m, 'timestamp') and m.timestamp and isinstance(m.timestamp, str):
+                    try:
+                        m.timestamp = datetime.fromisoformat(m.timestamp)
+                    except ValueError as e:
+                        print(f"Error parsing timestamp: {e}")
+                        m.timestamp = datetime.now()
+            except Exception as e:
+                print(f"Error during deserialization: {e}")
+            
+            deserialized_data.append(m)
+            
         return deserialized_data
    
     async def load_from_db(self, session: ChatSession, db: MongoDB) -> None:
@@ -112,8 +153,9 @@ class RedisCache:
         key = self.make_key(session)
         
         chat_history_json = await self.redis_client.get(key)
-        if chat_history_json:
+        if not chat_history_json:
             print("no chat history found")
+            return
         
         chat_data = json.loads(chat_history_json)
         
@@ -135,7 +177,7 @@ if __name__ == "__main__":
         cache = RedisCache()
 
         # First try to load from cache
-        history = await cache.get_chat_history(session)
+        history = await cache.get_chat_history(mongo_db_instance, session)
 
         # If empty, load from MongoDB
         if not history:
@@ -145,6 +187,6 @@ if __name__ == "__main__":
         msg = ChatMessage(role="user", content="Hello!", timestamp=datetime.now())
         await cache.add_message(session, msg)
         
-        print(await cache.get_chat_history(session))
+        print(await cache.get_chat_history(mongo_db_instance, session))
 
     asyncio.run(main())

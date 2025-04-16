@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, HTTPException, Depends
+from fastapi import FastAPI, Request, HTTPException, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 from main import *
@@ -9,6 +9,7 @@ from agent import Agents as At
 from models import ChatRequest, ChatResponse, ChatSession, Mem0Context
 from redisCache import RedisCache
 from MongoDB import MongoDB
+from bson.objectid import ObjectId
 
 from slowapi import Limiter, _rate_limit_exceeded_handler
 
@@ -97,6 +98,27 @@ async def agent_response(context: Mem0Context, user_input: str) -> Mem0Context:
         print(error_msg)
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=error_msg)
+    
+async def get_db():
+    """Dependency to get the MongoDB instance"""
+    db = MongoDB()
+    if not db.initialized:
+        await db.initialize()
+    return db
+
+async def get_cache():
+    """Dependency to get the RedisCache instance"""
+    return RedisCache()
+    
+async def flush_to_DB(session: ChatSession, cache: RedisCache, db: MongoDB):
+    """Flush chat history from Redis to MongoDB"""
+    while 1:
+        await asyncio.sleep(300)
+        if not session or not db:
+            return
+        await cache.flush_cache_to_DB(session, db)
+
+
 
 @app.get("/")
 async def root():
@@ -112,21 +134,32 @@ async def root():
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat_endpoint(
-    request: ChatRequest
+    request: ChatRequest,
+    background_tasks: BackgroundTasks,
+    db: MongoDB = Depends(get_db),
+    cache: RedisCache = Depends(get_cache)
 ) -> ChatResponse:
     """Process a chat message and return the agent's response"""
     try:
-        cache = RedisCache()# Initialize the cache object
-        db = MongoDB()
+        if not request.user_id:
+            request.user_id = await db.create_user("Guest", "guest@example.com") 
+            if not request.conversation_id: 
+                request.conversation_id = await db.create_conversation(request.user_id)
+        
+        # Convert ObjectId to string if needed
+        user_id = str(request.user_id)
+        conversation_id = str(request.conversation_id)
         
         session = ChatSession(
-            user_id=request.user_id,
+            user_id=user_id,
             session_id=request.session_id,
-            conversation_id=request.conversation_id
+            conversation_id=conversation_id
         )
         
+        background_tasks.add_task(flush_to_DB, session, cache, db)
+        
         # Get the chat history from the cache or initialize it if it doesn't exist
-        chat_history = await cache.get_chat_history(session) 
+        chat_history = await cache.get_chat_history(db, session) 
         if not chat_history:
             chat_history = await cache.load_from_db(session, db)
             
@@ -138,14 +171,28 @@ async def chat_endpoint(
         response_obj = await agent_response(context=formatted_context, user_input=request.message)
         
         # Save the updated chat history to the cache
-        message = response_obj.to_chat_response()
+        message = response_obj.chat_history[-1]
         
-        await cache.add_message(session, message)
-        await cache.add_message(session, response_obj.chat_history[-1])
+        await cache.add_message(db, session, message)
+        await cache.add_message(db, session, response_obj.chat_history[-1])
         print("added: ", response_obj.chat_history)
         
         # Create a fresh response object
-        chat_response = Mem0Context().to_chat_response()
+        chat_response = ChatResponse(
+            status="success",
+            current_agent="memory_agent",
+            response=message.content,
+            timestamp=datetime.now().isoformat(),
+            response_metadata={},
+            tool_calls=response_obj.tool_usage_history,
+            chat_history=response_obj.chat_history,
+            ChatSession=ChatSession(
+                user_id=user_id,
+                session_id=request.session_id,
+                conversation_id=conversation_id
+            )
+        )
+        
         
         return chat_response
 
@@ -160,8 +207,25 @@ async def chat_endpoint(
             response=f"Error: {error_message}",
             timestamp=datetime.now().isoformat(),
             response_metadata={"error_details": error_message},
-            chat_history=[]
+            chat_history=[],
+            ChatSession=ChatSession(
+                user_id=request.user_id,
+                session_id=request.session_id,
+                conversation_id=request.conversation_id
+            )
         )
+        
+        
+@app.get("/chat/{conversation_id}/{user_id}")    
+async def send_chat_history(conversation_id: str, user_id: str, cache: RedisCache = Depends(get_cache), db: MongoDB = Depends(get_db)):
+    """Endpoint to retrieve chat history for a given conversation"""
+    if not conversation_id or not user_id:
+        raise HTTPException(status_code=400, detail="conversation_id and user_id are required")
+    try:
+        history = await cache.get_chat_history(db, ChatSession(conversation_id=conversation_id,session_id="1234567890", user_id=user_id))
+        return history
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Add this endpoint to debug what's being sent
 @app.post("/debug")
