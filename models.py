@@ -20,12 +20,11 @@ class ChatSession(BaseModel):
     user_id: Union[str,PydanticObjectId]
     session_id: str
     conversation_id: Union[str, PydanticObjectId]
-    class Config:
-        arbitrary_types_allowed = True
+
 
 
 class ChatMessage(Document):
-    conversation_id: Link[conversations]
+    conversation_id: Union[str, PydanticObjectId ,Link[conversations]]
     timestamp: datetime | None = None
     role: str
     content: str
@@ -58,6 +57,7 @@ class ToolUsageRecord(BaseModel):
 
 class Mem0Context(BaseModel):
     """Main data pipeline context for the agent application"""
+    username: str | None = None
     recent_memories: List[Dict[str, Any]] | None = None
     user_id: Union[str | PydanticObjectId] | None = None
     session_id: str | None = None
@@ -68,6 +68,14 @@ class Mem0Context(BaseModel):
     tool_usage_history: List[ToolUsageRecord] = []
     response_metrics: Dict[str, Any] = {}
     chat_history: List[ChatMessage] = []
+    
+    def to_chat_session(self) -> "ChatSession":
+        """convert context to chat session"""
+        return ChatSession(
+            user_id = self.user_id,
+            session_id = self.session_id,
+            conversation_id = self.conversation_id
+        )
     
     def add_to_history(self, user_message: str, assistant_response: str) -> None:
         """Add a conversation entry to the history"""
@@ -124,4 +132,26 @@ class ChatResponse(BaseModel):
     response_metadata: Dict[str, Any] = {}
     tool_calls: List[ToolUsageRecord] = []
     chat_history: List[ChatMessage] = []
-    
+
+def normalize_id(id_value):
+    """Convert any ID format (Link, ObjectId, string) to a plain string ID."""
+    if id_value is None:
+        return None
+        
+    # Handle Link objects
+    if hasattr(id_value, 'id'):
+        return str(id_value.id)
+        
+    # Handle string representation of Link objects
+    if isinstance(id_value, str) and '<beanie.odm.fields.Link' in id_value:
+        import re
+        id_match = re.search(r"ObjectId\('([^']+)'\)", id_value)
+        if id_match:
+            return id_match.group(1)
+            
+    # Handle ObjectId objects
+    if hasattr(id_value, '__str__'):
+        return str(id_value)
+        
+    return str(id_value)
+

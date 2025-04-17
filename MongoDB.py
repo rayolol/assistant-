@@ -55,7 +55,6 @@ class MongoDB:
         
     async def get_history(self, conversation_id: str):
         history = await ChatMessage.find(ChatMessage.conversation_id == conversation_id).to_list()
-        print (history)
         return history
     
     async def get_conversation(self, user_id: str):

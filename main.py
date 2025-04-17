@@ -77,13 +77,9 @@ def build_system_prompt(context: Mem0Context, user_message: str) -> str:
             agent_id=context.current_agent,
             run_id=context.session_id,
             limit=10)
-        if not search_result or "results" not in search_result:
-            return "No relevant memories found."
             
         memories = search_result.get("results", [])
-        if not memories:
-            return "No relevant memories found."
-        
+    
         context_memory = []
         memories_str = ""
         for i, entry in enumerate(memories):
@@ -93,14 +89,15 @@ def build_system_prompt(context: Mem0Context, user_message: str) -> str:
         
         context.recent_memories = context_memory
             
-                
+        # Only include the most recent messages (last 5 exchanges = 10 messages)
         history_str = ""
         if context.chat_history:
-            for entry in context.chat_history:
+            recent_history = context.chat_history[-10:] if len(context.chat_history) > 10 else context.chat_history
+            for entry in recent_history:
                 history_str += f"role: {entry.role}\ncontent: {entry.content}\n"
-                print(history_str)
         
-        system_prompt = f"Recent conversation:\n{history_str}\n\nRelevant memories:\n{memories_str}"
+        system_prompt = f"current User input: {user_message} Recent conversation:\n{history_str}\n\nRelevant memories:\n{memories_str if memories_str else 'No memories found.'}"
+        context.chat_history =  []
         return system_prompt
     except Exception as e:
         print(f"Error in build_system_prompt: {e}")

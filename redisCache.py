@@ -72,6 +72,11 @@ class RedisCache:
         """Serialize data to JSON string"""
         serialized_data = []
         for m in data:
+            # Skip if m is not an object with attributes
+            if isinstance(m, str):
+                print(f"Warning: Skipping string item in serialize_history: {m}")
+                continue
+            
             # Create a copy of the message data
             message_dict = {}
             
@@ -92,13 +97,21 @@ class RedisCache:
                 else:
                     message_dict['timestamp'] = datetime.now().isoformat()
             
-            # Copy other attributes
-            for attr, value in m.__dict__.items():
-                if attr not in ['conversation_id', 'timestamp', '__pydantic_fields_set__', '__pydantic_extra__', '__pydantic_private__']:
-                    message_dict[attr] = value
+            # Copy other attributes - use model_dump() for Pydantic models if available
+            if hasattr(m, 'model_dump'):
+                # For Pydantic v2 models
+                model_data = m.model_dump()
+                for key, value in model_data.items():
+                    if key not in ['conversation_id', 'timestamp']:
+                        message_dict[key] = value
+            elif hasattr(m, '__dict__'):
+                # For regular objects or Pydantic v1 models
+                for attr, value in m.__dict__.items():
+                    if attr not in ['conversation_id', 'timestamp', '__pydantic_fields_set__', '__pydantic_extra__', '__pydantic_private__']:
+                        message_dict[attr] = value
             
             serialized_data.append(message_dict)
-                    
+                
         return serialized_data
     
     def deserialize_history(self, data: List[ChatMessage]) -> List[ChatMessage]:

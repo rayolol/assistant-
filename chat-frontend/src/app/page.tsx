@@ -14,8 +14,8 @@ export default function Page() {
         if (user && conversation_id) {
             fetchMessagesHistory(conversation_id, user).then(data => {
                 if (data && Array.isArray(data)) {
-                    setMessages(data);
-                }
+                    setMessages(prev_data => [...data, ...prev_data]);
+                } 
             })
         }
 
