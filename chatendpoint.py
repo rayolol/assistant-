@@ -7,15 +7,14 @@ from core.agent import Agents as At
 from models import ChatRequest, ChatResponse, ChatSession, Mem0Context
 from memory.redisCache import RedisCache
 from memory.MongoDB import MongoDB
-from mem0 import Memory
-from core.agent_prompts import agent_response, config
+from core.agent_prompts import agent_response
 import traceback
 
-from slowapi import Limiter, _rate_limit_exceeded_handler
+# Rate limiting can be added later if needed
+# from slowapi import Limiter, _rate_limit_exceeded_handler
 
-global memory 
-memory = Memory.from_config(config)
-    
+# Use memory from core.agent_prompts
+
 app = FastAPI(
     title="Memory Chat API",
     description="API for interacting with a memory-based chat agent",
@@ -29,7 +28,7 @@ app.add_middleware(
     allow_methods=["*"],  # Allows all methods
     allow_headers=["*"],  # Allows all headers
 )
-  
+
 
 async def get_db():
     """Dependency to get the MongoDB instance"""
@@ -41,7 +40,7 @@ async def get_db():
 async def get_cache():
     """Dependency to get the RedisCache instance"""
     return RedisCache()
-    
+
 async def flush_to_DB(session: ChatSession, cache: RedisCache, db: MongoDB):
     """Flush chat history from Redis to MongoDB"""
     while 1:
@@ -74,26 +73,26 @@ async def chat_endpoint(
     """Process a chat message and return the agent's response"""
     try:
         if not request.user_id:
-            request.user_id = await db.create_user("Guest", "guest@example.com") 
-            if not request.conversation_id: 
+            request.user_id = await db.create_user("Guest", "guest@example.com")
+            if not request.conversation_id:
                 request.conversation_id = await db.create_conversation(request.user_id)
-        
+
         # Convert ObjectId to string if needed
         user_id = str(request.user_id)
         conversation_id = str(request.conversation_id)
-        
+
         context = Mem0Context(
             user_id=user_id,
             session_id=request.session_id,
             conversation_id=conversation_id,
             current_agent="memory_agent"
-            
+
         )
-        
-        background_tasks.add_task(flush_to_DB, context.to_chat_session(), cache, db)                
+
+        background_tasks.add_task(flush_to_DB, context.to_chat_session(), cache, db)
         # Process the message through the agent
         response = await agent_response(db = db, cache = cache, context=context, user_input=request.message)
-        
+
         # Create a fresh response object
         chat_response = ChatResponse(
             status="success",
@@ -108,8 +107,8 @@ async def chat_endpoint(
                 conversation_id=conversation_id
             )
         )
-        
-        
+
+
         return chat_response
 
     except Exception as e:
@@ -130,9 +129,9 @@ async def chat_endpoint(
                 conversation_id=request.conversation_id
             )
         )
-        
-        
-@app.get("/chat/{conversation_id}/{user_id}")    
+
+
+@app.get("/chat/{conversation_id}/{user_id}")
 async def send_chat_history(conversation_id: str, user_id: str, cache: RedisCache = Depends(get_cache), db: MongoDB = Depends(get_db)):
     """Endpoint to retrieve chat history for a given conversation"""
     if not conversation_id or not user_id:
@@ -149,7 +148,7 @@ async def send_chat_history(conversation_id: str, user_id: str, cache: RedisCach
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
-    
+
 
 # Add this endpoint to debug what's being sent
 @app.post("/debug")
