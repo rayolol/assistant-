@@ -148,6 +148,17 @@ async def send_chat_history(conversation_id: str, user_id: str, cache: RedisCach
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+    
+@app.get("/conversations/{user_id}?page={page}")
+def get_conversations(user_id: str, page: int = 1, db: MongoDB = Depends(get_db)):
+    """Endpoint to retrieve all conversations for a given user"""
+    try:
+        skip = (page - 1) 
+        conversations = db.get_conversation(user_id)[skip:skip]
+        return conversations
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
     
 

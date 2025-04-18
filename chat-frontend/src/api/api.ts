@@ -22,4 +22,9 @@ export const fetchMessagesHistory = async (conversation_id: string, user_id: str
     return response.data;
 }
 
+export const fetchConversations = async (user_id: string, page: number) => {
+    const response = await instance.get(`/conversations/${user_id}?page=${page}`);
+    return response.data;
+}
+
 export default instance;

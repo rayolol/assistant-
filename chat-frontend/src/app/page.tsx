@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import ChatWindow from '../components/ChatWindow.tsx'
 import InputBox from '../components/InputBox.tsx'
+import SideBar from '../components/sideBar.tsx'
 import { Message } from '../types/message.tsx'
 import { sendMessage, fetchMessagesHistory } from '../api/api.ts'
 import { useUserStore } from '../types/UserStore.tsx'
@@ -112,13 +113,16 @@ export default function Page() {
     };
 
     return (
-        <main className = "h-screen flex flex-col items-center justify-between bg-gray-900 text-white">
-            <div className = 'max-w-3xl w-full flex-1 p-4 overflow-y-auto'>
-                <ChatWindow message={messages}/>
-                {isTyping && <div className='mt-2 text-gray-400'> Typing...</div>}
-            </div>
-            <InputBox onSendMessage={handleSendMessage} />
-        </main>
+        <div className = "flex h-screen">
+            <SideBar/>
+            <main className = "h-screen flex flex-col items-center justify-between bg-gray-900 text-white">
+                <div className = 'max-w-3xl w-full flex-1 p-4 overflow-y-auto'>
+                    <ChatWindow message={messages}/>
+                    {isTyping && <div className='mt-2 text-gray-400'> Typing...</div>}
+                </div>
+                <InputBox onSendMessage={handleSendMessage} />
+            </main>
+        </div>
 
     );
 }
