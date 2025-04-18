@@ -8,11 +8,11 @@ from agents import (
     Runner,
     RunConfig,
 ) 
-from agent import Agents as At
+from core.agent import Agents as At
 import default_tools as DT
 from models import ChatMessage, Mem0Context
 import json 
-import prompts as P
+import core.prompts as P
 # Remove colorama imports and initialization
 import traceback
 from dotenv import load_dotenv

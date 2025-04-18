@@ -3,12 +3,12 @@ from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 import traceback
 from datetime import datetime
-from agent import Agents as At
+from core.agent import Agents as At
 from models import ChatRequest, ChatResponse, ChatSession, Mem0Context
-from redisCache import RedisCache
-from MongoDB import MongoDB
+from memory.redisCache import RedisCache
+from memory.MongoDB import MongoDB
 from mem0 import Memory
-from agent_prompts import agent_response, config
+from core.agent_prompts import agent_response, config
 import traceback
 
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -148,7 +148,6 @@ async def send_chat_history(conversation_id: str, user_id: str, cache: RedisCach
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
-        return []
 
     
 

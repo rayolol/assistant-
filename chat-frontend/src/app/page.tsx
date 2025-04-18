@@ -11,15 +11,60 @@ export default function Page() {
     const {user, setUser, conversation_id, setConversationId} = useUserStore();
 
     useEffect(() => {
-        if (user && conversation_id) {
-            fetchMessagesHistory(conversation_id, user).then(data => {
-                if (data && Array.isArray(data)) {
-                    setMessages(prev_data => [...data, ...prev_data]);
-                } 
-            })
+        // Skip if we don't have both user and conversation_id
+        if (!user || !conversation_id) {
+            return;
         }
-
-    }, [conversation_id, user])
+        
+        // Add a flag to track if we've already loaded history
+        let isHistoryLoaded = false;
+        
+        const loadHistory = async () => {
+            // Skip if we've already loaded history
+            if (isHistoryLoaded) {
+                return;
+            }
+            
+            try {
+                console.log(`Loading history for conversation: ${conversation_id}, user: ${user}`);
+                isHistoryLoaded = true; // Set flag before the async call
+                
+                const data = await fetchMessagesHistory(conversation_id, user);
+                if (data && Array.isArray(data)) {
+                    // Use a function to update state to avoid race conditions
+                    setMessages(prevMessages => {
+                        // Check if we already have these messages to avoid duplicates
+                        const existingIds = new Set(prevMessages.map(msg => 
+                            msg.timestamp + msg.role + msg.content));
+                        
+                        // Filter out messages we already have
+                        const newMessages = data.filter(msg => 
+                            !existingIds.has(msg.timestamp + msg.role + msg.content));
+                        
+                        // Only update if we have new messages
+                        if (newMessages.length === 0) {
+                            return prevMessages;
+                        }
+                        
+                        console.log(`Adding ${newMessages.length} new messages to history`);
+                        return [...newMessages, ...prevMessages];
+                    });
+                } else {
+                    console.warn('Received non-array data from history API:', data);
+                }
+            } catch (error) {
+                console.error('Failed to load message history:', error);
+                isHistoryLoaded = false; // Reset flag on error to allow retry
+            }
+        };
+        
+        loadHistory();
+        
+        // Cleanup function to handle component unmount
+        return () => {
+            isHistoryLoaded = true; // Prevent any pending async operations
+        };
+    }, [user, conversation_id]); // Only re-run when user or conversation_id changes
     
 
     const handleSendMessage = async (message: string) => {
