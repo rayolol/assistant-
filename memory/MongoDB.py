@@ -2,28 +2,8 @@ from motor.motor_asyncio import AsyncIOMotorClient as MongoClient
 from pydantic import BaseModel
 from datetime import datetime
 from typing import List, Dict, Optional, Any
-from default_tools import ChatMessage
 from beanie import init_beanie, Document , Link
-
-class users(Document):
-    username: str
-    email: str
-#    password: str
-    created_at: datetime = datetime.now()
-    
-class conversations(Document):
-    name: str = "new Conversation"
-    user: Link[users]
-    messages: List[Link[messages]]
-    started_at: datetime = datetime.now()
-    last_active: Optional[datetime] = None
-
-class messages(Document):
-    role: str
-    conversation_id: Link[conversations]
-    messages: str
-    timestamp: datetime = datetime.now()
-    tool_Calls: List[Dict[str, Any]] = []
+from models import users, conversations, ChatMessage
 
 #Create user
 #user = User(username="alex", email="alex@example.com")
@@ -52,7 +32,7 @@ class MongoDB:
         if not self.initialized:
             await init_beanie(
                 database=self.client[self.db],
-                document_models=[users, conversations, messages]
+                document_models=[users, conversations, ChatMessage]
                 )
             self.initialized = True
         return self
@@ -62,8 +42,8 @@ class MongoDB:
         await user.insert()
         return user._id
     
-    async def add_message(self, messages: messages, conversation_id: str):
-        message = messages(conversation_id = conversation_id, messages = messages)
+    async def add_message(self, messages: ChatMessage, conversation_id: str):
+        message = ChatMessage(conversation_id = conversation_id, messages = messages)
         await message.insert()
         
     async def create_conversation(self, user_id: str, name: str = "new conversation"):
@@ -72,7 +52,7 @@ class MongoDB:
         return conversation.id
         
     async def get_history(self, conversation_id: str):
-        history = await messages.find({"conversation_id": conversation_id}).to_list()
+        history = await ChatMessage.find({"conversation_id": conversation_id}).to_list()
         return history
     
     async def get_conversation(self, user_id: str):
@@ -88,4 +68,4 @@ class MongoDB:
         
         if not self.initialized:
             await self.initialize()
-        await messages.find({"_id": conversation_id}).delete()
+        await ChatMessage.find({"_id": conversation_id}).delete()

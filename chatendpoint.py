@@ -80,6 +80,7 @@ async def chat_endpoint(
         # Convert ObjectId to string if needed
         user_id = str(request.user_id)
         conversation_id = str(request.conversation_id)
+        
 
         context = Mem0Context(
             user_id=user_id,
