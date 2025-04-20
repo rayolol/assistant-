@@ -13,6 +13,7 @@ class users(Document):
     
 class conversations(Document):
     user_id: Link[users]
+    name: str = "new conversation"
     started_at: datetime = datetime.now()
     last_active: datetime = datetime.now()
 

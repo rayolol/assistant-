@@ -10,3 +10,12 @@ export type Message = {
     flags: any;
     
 }
+
+export type Conversation = {
+    id: string;
+    name: string;
+    started_at: string;
+    last_active: string;
+    is_archived?: boolean;
+    tags?: string[];
+}

@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from memory.MongoDB import MongoDB  # Fixed import path
 import os
 import asyncio
+import traceback
 
 
 
@@ -166,7 +167,9 @@ class RedisCache:
 
         await db.add_message(full_chat_history, session.conversation_id)
         print("flushed", full_chat_history.__str__())
-
+        
+        
+        
 
 
 if __name__ == "__main__":

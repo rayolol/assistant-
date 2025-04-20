@@ -45,7 +45,7 @@ async def agent_response(db: MongoDB, cache: RedisCache, context: Mem0Context, u
         # Process the message (this would typically involve calling an LLM)
         # For now, we'll just echo the message back with a prefix
         full_prompt = await build_full_prompt(memory, cache, db, context, user_input)
-        print("System prompt:", full_prompt)
+        print( full_prompt)
 
         run_config = RunConfig(
                 workflow_name="Memory Assistant Workflow",
@@ -116,6 +116,8 @@ async def build_full_prompt(memory: Memory, cache: RedisCache, db: MongoDB, cont
 
 
         full_prompt = f"""
+        System:
+        
         ##current user message:
             {user_input}
         ##recent conversation:

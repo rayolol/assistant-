@@ -55,8 +55,8 @@ const ChatMessages = ({ message }: { message: Message }) => {
 
       <div
         className={`
-          flex flex-col max-w-[80%] md:max-w-[70%] lg:max-w-[60%]
-          ${isUser ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100'}
+          flex flex-col  md:max-w-[100%] lg:max-w-[100%]
+          ${isUser ? 'bg-blue-600 text-white max-w-[80%]' : 'max-w-full bg-slate-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100'}
           rounded-2xl px-4 py-3 shadow-sm
           ${isUser ? 'rounded-tr-none' : 'rounded-tl-none'}
         `}

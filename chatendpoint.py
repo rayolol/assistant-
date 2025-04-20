@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request, HTTPException, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
-import traceback
+from typing import List
 from datetime import datetime
 from core.agent import Agents as At
 from models import ChatRequest, ChatResponse, ChatSession, Mem0Context
@@ -73,9 +73,13 @@ async def chat_endpoint(
     """Process a chat message and return the agent's response"""
     try:
         if not request.user_id:
-            request.user_id = await db.create_user("Guest", "guest@example.com")
-            if not request.conversation_id:
-                request.conversation_id = await db.create_conversation(request.user_id)
+            user = await db.search_user("Guest", "Guest@example.com")
+            if not user:
+                request.user_id = await db.create_user("Guest", "Guest@example.com")
+            else:
+                request.user_id = user._id
+                
+            print("Created new user:", response.user_id)
 
         # Convert ObjectId to string if needed
         user_id = str(request.user_id)
@@ -151,6 +155,8 @@ async def send_chat_history(conversation_id: str, user_id: str, cache: RedisCach
 
 
 
+
+
 # Add this endpoint to debug what's being sent
 @app.post("/debug")
 async def debug_endpoint(request: Request):
@@ -158,6 +164,70 @@ async def debug_endpoint(request: Request):
     body = await request.json()
     print("Received request body:", body)
     return {"received": body}
+
+
+@app.post("/chat/conversations/{user_id}")
+async def create_conversation(
+    user_id: str,
+    db: MongoDB = Depends(get_db)
+):
+    """Endpoint to create a new conversation for a user"""
+    try:
+        if not user_id:
+            raise HTTPException(status_code=400, detail="user_id is required")
+        conversation_id = await db.create_conversation(user_id)
+        return {"id": conversation_id}
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/chat/conversations/{user_id}")
+async def get_user_conversations(
+    user_id: str,
+    db: MongoDB = Depends(get_db)
+):
+    """Endpoint to retrieve all conversations for a user"""
+    try:
+        if not user_id:
+            raise HTTPException(status_code=400, detail="user_id is required")
+            
+        # Get all conversations for the user
+        conversations = await db.get_conversation(user_id)
+        
+        # If conversations is None or empty, return an empty list
+        if not conversations:
+            return []
+            
+        # If it's a single conversation object, convert to list
+        if not isinstance(conversations, list):
+            conversations = [conversations]
+            
+        # Format the response
+        result = []
+        for conv in conversations:
+            # Handle both dictionary and object formats
+            if isinstance(conv, dict):
+                result.append({
+                    "id": conv.get("id") or str(conv.get("_id", "")),
+                    "name": conv.get("name", "New Conversation"),
+                    "created_at": conv.get("created_at", ""),
+                    "last_active": conv.get("last_active", "")
+                })
+            else:
+                # Assuming it's an object with attributes
+                result.append({
+                    "id": getattr(conv, "id", None) or str(getattr(conv, "_id", "")),
+                    "name": getattr(conv, "name", "New Conversation"),
+                    "created_at": getattr(conv, "created_at", ""),
+                    "last_active": getattr(conv, "last_active", "")
+                })
+                
+        return result
+        
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn

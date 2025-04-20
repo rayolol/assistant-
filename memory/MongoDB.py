@@ -38,29 +38,138 @@ class MongoDB:
         return self
         
     async def create_user(self, username: str, email: str):
+        if not self.initialized:
+            await self.initialize()
         user = users(username=username, email=email)
         await user.insert()
         return user._id
     
     async def add_message(self, messages: ChatMessage, conversation_id: str):
+        if not self.initialized:
+            await self.initialize()
         message = ChatMessage(conversation_id = conversation_id, messages = messages)
         await message.insert()
         
     async def create_conversation(self, user_id: str, name: str = "new conversation"):
-        conversation = conversations(user_id=user_id)
+        """Create a new conversation for a user"""
+        if not self.initialized:
+            await self.initialize()
+        conversation = conversations(user_id=user_id, name=name)
         await conversation.insert()
-        return conversation.id
+        return str(conversation.id)
         
     async def get_history(self, conversation_id: str):
+        if not self.initialized:
+            await self.initialize()
+        
         history = await ChatMessage.find({"conversation_id": conversation_id}).to_list()
         return history
     
-    async def get_conversation(self, user_id: str):
+    async def get_conversation(self, user_id: str, include_archived: bool = False):
+        """Get all conversations for a user"""
         try:
-            conversation = await conversations.find({"user": user_id}).to_list()
-            return conversation
+            if not self.initialized:
+                await self.initialize()
+            
+            # Build query
+            query = {"user_id": user_id}
+            if not include_archived:
+                query["is_archived"] = False
+            
+            # Get conversations
+            conversation_list = await conversations.find(query).sort([("last_active", -1)]).to_list()
+            
+            # Convert to dictionaries
+            result = []
+            for conv in conversation_list:
+                result.append({
+                    "id": str(conv.id),
+                    "name": conv.name,
+                    "started_at": conv.started_at.isoformat(),
+                    "last_active": conv.last_active.isoformat(),
+                    "is_archived": getattr(conv, "is_archived", False),
+                    "tags": getattr(conv, "tags", [])
+                })
+            return result
         except Exception as e:
             print(f"Error in get_conversation: {e}")
+            return []
+
+    async def get_conversation_by_id(self, conversation_id: str):
+        """Get a specific conversation by ID"""
+        if not self.initialized:
+            await self.initialize()
+        try:
+            conv = await conversations.get(conversation_id)
+            if not conv:
+                return None
+            return {
+                "id": str(conv.id),
+                "name": conv.name,
+                "started_at": conv.started_at.isoformat(),
+                "last_active": conv.last_active.isoformat(),
+                "is_archived": getattr(conv, "is_archived", False),
+                "tags": getattr(conv, "tags", [])
+            }
+        except Exception as e:
+            print(f"Error in get_conversation_by_id: {e}")
+            return None
+
+    async def update_conversation(self, conversation_id: str, data: dict):
+        """Update a conversation with new data"""
+        if not self.initialized:
+            await self.initialize()
+        try:
+            conv = await conversations.get(conversation_id)
+            if not conv:
+                return False
+            
+            # Update fields
+            if "name" in data:
+                conv.name = data["name"]
+            if "is_archived" in data:
+                conv.is_archived = data["is_archived"]
+            if "tags" in data:
+                conv.tags = data["tags"]
+            
+            # Always update last_active
+            conv.last_active = datetime.now()
+            
+            # Save changes
+            await conv.save()
+            return True
+        except Exception as e:
+            print(f"Error in update_conversation: {e}")
+            return False
+
+    async def delete_conversation(self, conversation_id: str):
+        """Delete a conversation and all its messages"""
+        if not self.initialized:
+            await self.initialize()
+        try:
+            # Delete the conversation
+            conv = await conversations.get(conversation_id)
+            if not conv:
+                return False
+            
+            # Delete all messages in the conversation
+            await ChatMessage.find({"conversation_id": conversation_id}).delete()
+            
+            # Delete the conversation itself
+            await conv.delete()
+            return True
+        except Exception as e:
+            print(f"Error in delete_conversation: {e}")
+            return False
+        
+    async def search_user(self, username: str, email: str):
+        try:
+            if not self.initialized:
+                await self.initialize()            
+            user = await users.find_one({"username": username, "email": email})
+            return user
+        except Exception as e:
+            print(f"Error in search_user: {e}")
             return None
        
     
