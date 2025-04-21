@@ -41,6 +41,19 @@ async def get_cache():
     """Dependency to get the RedisCache instance"""
     return RedisCache()
 
+async def get_or_create_guest_user(db: MongoDB, user_id: str = None):
+    """Get or create a guest user"""
+    if not user_id or user_id == "guest":
+        user = await db.search_user("Guest", "Guest@example.com")
+        if not user:
+            # Create the guest user if it doesn't exist
+            user_id = await db.create_user("Guest", "Guest@example.com")
+            print("Created new guest user:", user_id)
+        else:
+            user_id = str(user.id)
+            print("Using existing guest user:", user_id)
+    return user_id
+
 async def flush_to_DB(session: ChatSession, cache: RedisCache, db: MongoDB):
     """Flush chat history from Redis to MongoDB"""
     while 1:
@@ -72,19 +85,14 @@ async def chat_endpoint(
 ) -> ChatResponse:
     """Process a chat message and return the agent's response"""
     try:
-        if not request.user_id:
-            user = await db.search_user("Guest", "Guest@example.com")
-            if not user:
-                request.user_id = await db.create_user("Guest", "Guest@example.com")
-            else:
-                request.user_id = user._id
-                
-            print("Created new user:", response.user_id)
+        # Handle guest user or missing user_id
+        request.user_id = await get_or_create_guest_user(db, request.user_id)
 
         # Convert ObjectId to string if needed
         user_id = str(request.user_id)
         conversation_id = str(request.conversation_id)
-        
+        print(f"using during conversation: {conversation_id}")
+
 
         context = Mem0Context(
             user_id=user_id,
@@ -143,12 +151,22 @@ async def send_chat_history(conversation_id: str, user_id: str, cache: RedisCach
         print("conversation_id and user_id are required")
         raise HTTPException(status_code=400, detail="conversation_id and user_id are required")
     try:
-        history = await cache.get_chat_history(db, ChatSession(conversation_id=conversation_id,session_id="1234567890", user_id=user_id))
+        # Handle guest user
+        user_id = await get_or_create_guest_user(db, user_id)
+
+        # Get chat history
+        history = await cache.get_chat_history(db, ChatSession(conversation_id=conversation_id, session_id="1234567890", user_id=user_id))
         if history is None:
-            history = await cache.load_from_db(ChatSession(conversation_id=conversation_id,session_id="1234567890", user_id=user_id), db)
+            history = await cache.load_from_db(ChatSession(conversation_id=conversation_id, session_id="1234567890", user_id=user_id), db)
             if history is None:
                 return []
-        return history
+        conversation_history = []
+        #TODO move this logic to cache exit
+        for msg in history:
+            if msg.conversation_id == conversation_id:
+               conversation_history.append(msg)
+        return conversation_history
+
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
@@ -175,6 +193,11 @@ async def create_conversation(
     try:
         if not user_id:
             raise HTTPException(status_code=400, detail="user_id is required")
+
+        # Check if the user exists, create if not
+        user_id = await get_or_create_guest_user(db, user_id)
+
+        # Now create the conversation with the valid user ID
         conversation_id = await db.create_conversation(user_id)
         return {"id": conversation_id}
     except Exception as e:
@@ -191,18 +214,21 @@ async def get_user_conversations(
     try:
         if not user_id:
             raise HTTPException(status_code=400, detail="user_id is required")
-            
+
+        # Handle guest user
+        user_id = await get_or_create_guest_user(db, user_id)
+
         # Get all conversations for the user
         conversations = await db.get_conversation(user_id)
-        
+
         # If conversations is None or empty, return an empty list
         if not conversations:
             return []
-            
+
         # If it's a single conversation object, convert to list
         if not isinstance(conversations, list):
             conversations = [conversations]
-            
+
         # Format the response
         result = []
         for conv in conversations:
@@ -222,9 +248,11 @@ async def get_user_conversations(
                     "created_at": getattr(conv, "created_at", ""),
                     "last_active": getattr(conv, "last_active", "")
                 })
-                
-        return result
-        
+
+        response_data = {"data": result}
+        print(f"Returning conversations: {response_data}")
+        return response_data
+
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))

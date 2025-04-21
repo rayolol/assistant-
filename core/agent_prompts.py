@@ -112,7 +112,8 @@ async def build_full_prompt(memory: Memory, cache: RedisCache, db: MongoDB, cont
         history_str = ''
         if history:
             for msg in history:
-                history_str += f"Role: {msg.role}\nContent: {msg.content}\n"
+                if msg.conversation_id == context.conversation_id:
+                    history_str += f"Role: {msg.role}\nContent: {msg.content}\n"
 
 
         full_prompt = f"""

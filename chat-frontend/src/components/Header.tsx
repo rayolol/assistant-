@@ -1,5 +1,5 @@
 import React from 'react';
-import { useUserStore } from '../types/UserStore';
+import { useUserStore } from '../types/UserStore.tsx';
 
 interface HeaderProps {
   onMenuClick: () => void;

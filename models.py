@@ -42,6 +42,7 @@ class ChatMessage(Document):
         if 'timestamp' not in data:
             data['timestamp'] = datetime.now()
         super().__init__(**data)
+        
 
 class ToolUsageRecord(BaseModel):
     tool_name: str

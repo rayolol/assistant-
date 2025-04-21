@@ -1,12 +1,11 @@
 import './App.css';
-//import Component from './chatbox_input.jsx';
-import Page from "./app/page.tsx";
+import ModernChat from './pages/ModernChat';
+import './styles/ModernChat.css';
 
 function App() {
-  
   return (
-    <Page/>
+    <ModernChat />
   );
-
 }
+
 export default App;
