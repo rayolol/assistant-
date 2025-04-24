@@ -2,13 +2,13 @@
 export type Message = {
     user_id: string | null;
     session_id: string ;
-    conversation_id: string | null;
+    conversation_id: string | null | undefined;
     role: string;
     content: string;
     timestamp: string;
     ui_metadata: any;
     flags: any;
-    
+
 }
 
 export type Conversation = {

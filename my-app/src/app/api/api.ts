@@ -1,19 +1,15 @@
+"use client";
+
 import axios from 'axios';
+import { Message } from '../../../types/message';
 
 const instance = axios.create({
     baseURL: 'http://localhost:8000'
 });
 
-export const sendMessage = async (message: string, conversation_id: string | null, user_id: string | null) => {
+export const sendMessage = async (message: Message) => {
     try {
-        const response = await instance.post('/chat', {
-            user_id: user_id,
-            session_id: "1234567890",
-            conversation_id: conversation_id,
-            message: message,
-            ui_metadata: {},
-            flags: {}
-        });
+        const response = await instance.post('/chat', message);
 
         return response.data;
     } catch (error) {
@@ -22,9 +18,11 @@ export const sendMessage = async (message: string, conversation_id: string | nul
     }
 }
 
-export const fetchMessagesHistory = async (conversation_id: string, user_id: string) => {
+export const fetchMessagesHistory = async (conversation_id: string, user_id: string | null, session_id: string | null) => {
     try {
-        const response = await instance.get(`/chat/${conversation_id}/${user_id}`);
+        console.log("Fetching messages history for:", { conversation_id, user_id });
+        const response = await instance.get(`/chat/${conversation_id}/${user_id}/${session_id}`);
+        console.log("Raw API response:", response.data);
         return response.data;
     } catch (error) {
         console.error("Error fetching message history:", error);
@@ -51,6 +49,22 @@ export const createConversation = async (user_id: string, name?: string) => {
         return response.data; // This will return { id: conversation_id }
     } catch (error) {
         console.error("Error creating conversation:", error);
+        throw error;
+    }
+}
+
+export const fetchUserId = async (userInfo: {username: string, email: string}) => {
+    try {
+        console.log("Fetching user ID for:", userInfo);
+        // Change from GET to POST and send data in request body
+        const response = await instance.post('/users/get-user-id', {
+            username: userInfo.username,
+            email: userInfo.email
+        });
+        console.log("Raw API response:", response.data);
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching user info:", error);
         throw error;
     }
 }

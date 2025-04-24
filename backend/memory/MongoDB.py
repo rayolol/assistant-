@@ -42,7 +42,7 @@ class MongoDB:
             await self.initialize()
         user = users(username=username, email=email)
         await user.insert()
-        return user._id
+        return user.id
 
     async def add_message(self, messages: ChatMessage, conversation_id: str):
         if not self.initialized:
@@ -212,12 +212,23 @@ class MongoDB:
             print(f"Error in delete_conversation: {e}")
             return False
 
-    async def search_user(self, username: str, email: str):
+    async def search_user(self, username=None, email=None):
+        """Search for a user by username or email"""
         try:
-            if not self.initialized:
-                await self.initialize()
-            user = await users.find_one({"username": username, "email": email})
-            return user
+                
+            print(f"Searching for user with query: {username}, {email}")
+            
+            # Make sure users collection is initialized
+            if not hasattr(self, 'users_collection'):
+                self.users_collection = self.db.users
+                
+            user = await users.find_one(users.username == username and users.email == email) # Find the user by username and email, if both are provided in the query. If only one is provided, it will find the user by that field. If neither is provided, it will return None.
+            print(f"Found user: {user}")
+            
+            if not user:
+                return None
+                
+            return user.id
         except Exception as e:
             print(f"Error in search_user: {e}")
             return None

@@ -121,7 +121,9 @@ class ChatRequest(BaseModel):
     user_id: Optional[str] = None
     session_id: str
     conversation_id: Optional[str] = None 
-    message: str
+    role: str
+    timestamp: Optional[str] = None
+    content: str
     ui_metadata: Dict[str, Any] = {}
     flags: Dict[str, Any] = {}
         
