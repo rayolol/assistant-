@@ -203,10 +203,7 @@ async def create_conversation(
     try:
         if not user_id:
             raise HTTPException(status_code=400, detail="user_id is required")
-
-        # Check if the user exists, create if not
-        user_id = await get_or_create_guest_user(db, user_id)
-
+                
         # Now create the conversation with the valid user ID
         conversation_id = await db.create_conversation(user_id)
         return {"id": conversation_id}
@@ -224,10 +221,6 @@ async def get_user_conversations(
     try:
         if not user_id:
             raise HTTPException(status_code=400, detail="user_id is required")
-
-        # Handle guest user
-        user_id = await get_or_create_guest_user(db, user_id)
-
         # Get all conversations for the user
         conversations = await db.get_conversation(user_id)
 

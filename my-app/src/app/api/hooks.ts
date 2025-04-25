@@ -65,12 +65,25 @@ export const useConversations = (user_id: string | null) =>
         queryKey: ['conversations', user_id],
         queryFn: async () => {
             if (user_id) {
-                return await fetchConversations(user_id);
+                console.log("useConversations hook fetching for user:", user_id);
+                const result = await fetchConversations(user_id);
+                console.log("useConversations hook received:", result);
+                return result;
             }
+            console.log("useConversations hook: no user_id, returning error");
             return Promise.reject(new Error('Invalid userId'));
         },
         enabled: Boolean(user_id),
         refetchOnWindowFocus: false,
+        select: (data) => {
+            console.log("useConversations select function received:", data);
+            // Ensure we always return the data array from the response
+            if (data && data.data && Array.isArray(data.data)) {
+                return data.data;
+            }
+            console.warn("useConversations: unexpected data format", data);
+            return [];
+        }
     })
 
 export const useGetUserId = (username: string, email: string) => {

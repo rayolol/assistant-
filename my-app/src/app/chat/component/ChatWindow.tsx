@@ -1,15 +1,14 @@
 "use client";
 
 import React, { useEffect, useState, useRef, useCallback, useMemo, memo } from 'react';
-import { useUserStore } from '../../../types/UserStore';
-import { Message } from '../../../types/message';
-import { useChathistory, useSendMessage, useCreateConversation } from '../api/hooks';
+import { useUserStore } from '../../../../types/UserStore';
+import { Message } from '../../../../types/message';
+import { useChathistory, useSendMessage, useCreateConversation } from '../../api/hooks';
 import Link from 'next/link';
 import TypingIndicator from './TypingIndicator';
-// Uncomment these imports after installing the packages
-// import ReactMarkdown from 'react-markdown';
-// import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-// import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import ReactMarkdown from 'react-markdown';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 // Memoized message component for better performance
 const ChatMessage = memo(({ message }: { message: Message }) => {
@@ -22,7 +21,35 @@ const ChatMessage = memo(({ message }: { message: Message }) => {
                     ? 'bg-blue-500 text-white rounded-tr-none'
                     : 'bg-gray-200 text-gray-800 rounded-tl-none'}`}
             >
-                {message.content}
+                <ReactMarkdown
+                    components={{
+                        code({ node, inline, className, children, ...props}: {
+                            node?: any;
+                            inline?: boolean;
+                            className?: string;
+                            children: React.ReactNode;
+                            [key: string]: any;
+                        }) {
+                            const match = /language-(\w+)/.exec(className || '');
+                            return !inline && match ? (
+                                <SyntaxHighlighter
+                                    style={atomDark}
+                                    language={match[1]}
+                                    PreTag="div"
+                                    {...props}
+                                >
+                                    {String(children).replace(/\n$/, '')}
+                                </SyntaxHighlighter>
+                            ) : (
+                                <code className={className} {...props}>
+                                    {children}
+                                </code>
+                            );
+                        }
+                    }}
+                >
+                    {message.content}
+                </ReactMarkdown>
             </div>
         </div>
     );
