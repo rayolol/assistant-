@@ -7,6 +7,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from agents import Runner, RunConfig
+from openai.types.responses import ResponseTextDeltaEvent
 from models import ChatMessage, Mem0Context
 from memory.redisCache import RedisCache
 from memory.MongoDB import MongoDB
@@ -89,6 +90,92 @@ async def agent_response(db: MongoDB, cache: RedisCache, context: Mem0Context, u
         return f"Sorry, I encountered an error: {str(e)}"
 
 
+async def Streamed_agent_response(db: MongoDB, cache: RedisCache, context: Mem0Context, user_input: str):
+    """
+    Process a user message through the agent and return the response
+
+    Args:
+        db: MongoDB instance
+        cache: RedisCache instance
+        context: Mem0Context containing conversation context
+        user_input: The user's message
+
+    Returns:
+        The agent's response as a string
+    """
+    try:
+        print(f"Starting Streamed_agent_response with input: {user_input}")
+        agent = Agents()
+        # Add the user message to the context
+        user_message = ChatMessage(
+            conversation_id=context.conversation_id,
+            role="user",
+            content=user_input,
+        )
+        memory = Memory.from_config(config)
+
+        # Add to Redis cache
+        await cache.add_message(db, context.to_chat_session(), user_message)
+
+        # Process the message (this would typically involve calling an LLM)
+        # For now, we'll just echo the message back with a prefix
+        full_prompt = await build_full_prompt(memory, cache, db, context, user_input)
+        print(f"Full prompt built: {len(full_prompt)} characters")
+
+        run_config = RunConfig(
+                workflow_name="Memory Assistant Workflow",
+                trace_metadata={"user_id": context.user_id}
+            )
+
+        # Yield a test message to verify streaming is working
+        yield "Starting to process your message...\n"
+
+        # Run the memory agent with the context
+        print("Starting streamed run...")
+        result = Runner.run_streamed(
+            starting_agent=agent.memory_agent(),
+            input=full_prompt,
+            context=context,
+            run_config=run_config
+            )
+
+        print("Stream run initiated, processing events...")
+        response_text = ""
+        async for event in result.stream_events():
+            if event.type == "raw_response_event" and isinstance(event.data, ResponseTextDeltaEvent):
+                print(f"Streaming delta: {event.data.delta}")
+                response_text += event.data.delta
+                yield event.data.delta
+            else:
+                print(f"Non-delta event received: {event.type}")
+
+        print(f"Finished streaming, total response length: {len(response_text)}")
+
+        # Create the assistant's response
+        assistant_message = ChatMessage(
+            conversation_id=context.conversation_id,
+            role="assistant",
+            content=response_text,
+        )
+
+        # Add to Redis cache
+        await cache.add_message(db, context.to_chat_session(), assistant_message)
+
+        # Add both messages to the context's chat history
+        context.chat_history.append(user_message)
+        context.chat_history.append(assistant_message)
+
+        # Yield a final message to indicate completion
+        yield "\n(Response complete)"
+
+    except Exception as e:
+        error_msg = f"Error in Streamed_agent_response: {str(e)}"
+        print(error_msg)
+        import traceback
+        traceback.print_exc()
+        yield f"\nError: {error_msg}"
+
+
 
 async def build_full_prompt(memory: Memory, cache: RedisCache, db: MongoDB, context: Mem0Context, user_input: str) -> str:
     """build the prompt of the assistant"""
@@ -118,7 +205,7 @@ async def build_full_prompt(memory: Memory, cache: RedisCache, db: MongoDB, cont
 
         full_prompt = f"""
         System:
-        
+
         ##current user message:
             {user_input}
         ##recent conversation:

@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo, memo } from 'react';
 import { useUserStore } from '../../../../types/UserStore';
 import { Message } from '../../../../types/message';
-import { useChathistory, useSendMessage, useCreateConversation } from '../../api/hooks';
+import { useChathistory, useCreateConversation, useStreamedResponse } from '../../api/hooks';
 import Link from 'next/link';
 import TypingIndicator from './TypingIndicator';
 import ReactMarkdown from 'react-markdown';
@@ -61,11 +61,58 @@ ChatMessage.displayName = 'ChatMessage';
 const ChatWindow: React.FC = () => {
     const { conversation_id, userId, sessionId, setConversationId, isAuthenticated } = useUserStore();
     const { data: fetchedMessages = [], isLoading, error } = useChathistory(conversation_id, userId, sessionId);
-    const { mutate: sendMessage, isPending: isSending } = useSendMessage();
     const { mutate: createConversation } = useCreateConversation();
+    const { response: streamedResponse, isStreaming, startStreaming } = useStreamedResponse(); // Import the hook and its state variables
     const [input, setInput] = useState('');
     const [pendingMessages, setPendingMessages] = useState<Message[]>([]);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    // Effect to update the pending messages with the streamed response
+    useEffect(() => {
+        console.log("useEffect triggered with streamedResponse:", streamedResponse);
+        console.log("pendingMessages.length:", pendingMessages.length);
+
+        if (streamedResponse && pendingMessages.length > 0) {
+            console.log("Creating assistant message with response:", streamedResponse);
+
+            // Create a new assistant message with the streamed response
+            const assistantMessage: Message = {
+                user_id: userId,
+                session_id: !sessionId ? "1234567890" : sessionId,
+                conversation_id: conversation_id || '',
+                role: 'assistant',
+                content: streamedResponse,
+                timestamp: new Date().toISOString(),
+                ui_metadata: {},
+                flags: {}
+            };
+
+            // Update the pending messages with the assistant's response
+            setPendingMessages(prev => {
+                console.log("Current pending messages:", prev);
+
+                // Find the last assistant message
+                let assistantIndex = -1;
+                for (let i = prev.length - 1; i >= 0; i--) {
+                    if (prev[i].role === 'assistant') {
+                        assistantIndex = i;
+                        break;
+                    }
+                }
+
+                if (assistantIndex !== -1) {
+                    console.log("Updating existing assistant message at index:", assistantIndex);
+                    // Create a new array with the updated assistant message
+                    const newMessages = [...prev];
+                    newMessages[assistantIndex] = assistantMessage;
+                    return newMessages;
+                } else {
+                    console.log("No assistant message found, adding new one");
+                    return [...prev, assistantMessage];
+                }
+            });
+        }
+    }, [streamedResponse, userId, sessionId, conversation_id, pendingMessages.length]);
 
     // Combine fetched messages with pending messages using useMemo to avoid unnecessary re-renders
     const messages = useMemo(() => {
@@ -116,11 +163,13 @@ const ChatWindow: React.FC = () => {
 
     // Handle sending a message - memoized with useCallback
     const handleSendMessage = useCallback(() => {
-        if (!input.trim() || isSending) return;
+        if (!input.trim() || isStreaming) return;
         if (!conversation_id || conversation_id === 'None') {
             console.error("Cannot send message without a valid conversation_id");
             return;
         }
+
+        console.log("Sending message with conversation_id:", conversation_id);
 
         // Create the message object
         const userMessage: Message = {
@@ -134,25 +183,38 @@ const ChatWindow: React.FC = () => {
             flags: {}
         };
 
-        // Add the message to pending messages immediately
-        setPendingMessages(prev => [...prev, userMessage]);
+        console.log("Created user message:", userMessage);
 
-        // Send the message to the API
-        sendMessage(userMessage, {
-            onSuccess: () => {
-                // Clear pending messages when the API call succeeds
-                // The messages will be fetched from the API
-                setPendingMessages([]);
-            },
-            onError: (error) => {
-                console.error("Error sending message:", error);
-                // Keep the pending message to show the user their message was sent
-                // but add an error indicator if needed
-            }
+        // Add the message to pending messages immediately
+        setPendingMessages(prev => {
+            console.log("Adding user message to pending messages");
+            return [...prev, userMessage];
         });
 
+        // Create a placeholder for the assistant's response
+        const assistantPlaceholder: Message = {
+            user_id: userId,
+            session_id: !sessionId ? "1234567890" : sessionId,
+            conversation_id: conversation_id,
+            role: 'assistant',
+            content: '...',
+            timestamp: new Date().toISOString(),
+            ui_metadata: {},
+            flags: {}
+        };
+
+        // Add the placeholder message
+        setPendingMessages(prev => {
+            console.log("Adding assistant placeholder to pending messages");
+            return [...prev, assistantPlaceholder];
+        });
+
+        // Start streaming the response
+        console.log("Starting streaming with message:", userMessage);
+        startStreaming(userMessage);
+
         setInput('');
-    }, [input, isSending, userId, sessionId, conversation_id, sendMessage, setPendingMessages]);
+    }, [input, isStreaming, userId, sessionId, conversation_id, startStreaming, setPendingMessages]);
 
     if (!isAuthenticated) {
         return (
@@ -199,7 +261,7 @@ const ChatWindow: React.FC = () => {
                         </div>
                     </div>
                 )}
-                {isSending && (
+                {isStreaming && (
                     <div className="flex justify-start">
                         <TypingIndicator />
                     </div>
@@ -216,17 +278,17 @@ const ChatWindow: React.FC = () => {
                         onChange={(e) => setInput(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
                         placeholder="Type your message..."
-                        disabled={isSending}
-                        className="flex-1 border border-gray-300 rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        disabled={isStreaming}
+                        className="flex-1 border text-white border-gray-300 rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                     <button
                         onClick={handleSendMessage}
-                        disabled={!input.trim() || isSending}
-                        className={`rounded-full p-2 ${!input.trim() || isSending
+                        disabled={!input.trim() || isStreaming}
+                        className={`rounded-full p-2 ${!input.trim() || isStreaming
                             ? 'bg-gray-300 cursor-not-allowed'
                             : 'bg-blue-500 hover:bg-blue-600 text-white'}`}
                     >
-                        {isSending ? (
+                        {isStreaming ? (
                             <svg className="w-6 h-6 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>

@@ -3,8 +3,10 @@
 import axios from 'axios';
 import { Message } from '../../../types/message';
 
+export const baseURL = 'http://localhost:8001'
+
 const instance = axios.create({
-    baseURL: 'http://localhost:8000'
+    baseURL: baseURL
 });
 
 export const sendMessage = async (message: Message) => {
@@ -98,5 +100,6 @@ export const fetchUserId = async (userInfo: {username: string, email: string}) =
         throw error;
     }
 }
+
 
 export default instance;

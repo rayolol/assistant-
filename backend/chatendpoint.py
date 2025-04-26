@@ -1,5 +1,6 @@
 from beanie import PydanticObjectId
 from fastapi import FastAPI, Request, HTTPException, Depends, BackgroundTasks, Response
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 from typing import List
@@ -8,7 +9,7 @@ from core.agent import Agents as At
 from models import ChatRequest, ChatResponse, ChatSession, Mem0Context, conversations
 from memory.redisCache import RedisCache
 from memory.MongoDB import MongoDB
-from core.agent_prompts import agent_response
+from core.agent_prompts import agent_response, Streamed_agent_response
 import traceback
 
 # Rate limiting can be added later if needed
@@ -76,6 +77,30 @@ async def root():
             "/chat": "POST endpoint for chat interactions"
         }
     }
+@app.post("/chat/streamed")
+async def chat_endpoint_streamed(
+    request: ChatRequest,
+    background_tasks: BackgroundTasks,
+    db: MongoDB = Depends(get_db),
+    cache: RedisCache = Depends(get_cache)):
+    """Process a chat message and return the agent's response"""
+    try:
+        context = Mem0Context()
+        context.receive_chat_request(request)
+        context.session_start_time = datetime.now()
+        context.current_agent = "main_agent"  # Set a default agent
+
+        print(f"Received streaming chat request: {request.model_dump()}")
+
+        # Process the message and return a streaming response
+        return StreamingResponse(
+            Streamed_agent_response(db=db, cache=cache, context=context, user_input=request.content),
+            media_type="text/event-stream"
+        )
+
+    except Exception as error:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(error))
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat_endpoint(
@@ -203,7 +228,7 @@ async def create_conversation(
     try:
         if not user_id:
             raise HTTPException(status_code=400, detail="user_id is required")
-                
+
         # Now create the conversation with the valid user ID
         conversation_id = await db.create_conversation(user_id)
         return {"id": conversation_id}
@@ -295,4 +320,4 @@ async def get_user_info(
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8001)

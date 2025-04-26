@@ -2,6 +2,8 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchConversations, fetchMessagesHistory, sendMessage, createConversation } from './api';
+import { baseURL } from './api';
+import { useState, useCallback } from 'react';
 import { Message } from '../../../types/message';
 import axios from 'axios';
 
@@ -97,3 +99,52 @@ export const useGetUserId = (username: string, email: string) => {
   });
 };
 
+export const useStreamedResponse = () => {
+    const [response, setResponse] = useState<string>("");
+    const [isStreaming, setIsStreaming] = useState<boolean>(false)
+
+    const startStreaming = useCallback(async (message: Message) => {
+        console.log("Starting streaming with message:", message);
+        setResponse("");
+        setIsStreaming(true);
+        try {
+            console.log("Fetching from:", `${baseURL}/chat/streamed`);
+            const res = await fetch(`${baseURL}/chat/streamed`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(message)
+            });
+
+            console.log("Stream response status:", 
+                res.status);
+            if (!res.ok) {
+                throw new Error(`Stream response error: ${res.status} ${res.statusText}`);
+            }
+
+            const reader = res.body!.getReader();
+            const decoder = new TextDecoder("utf-8");
+
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                const chunk = decoder.decode(value, { stream: true });
+                console.log("Received chunk:", chunk);
+                setResponse((prev: string) => {
+                    const newResponse = prev + chunk;
+                    console.log("Updated response:", newResponse);
+                    return newResponse;
+                });
+            }
+        } catch (error) {
+            console.error("Error sending message:", error);
+            throw error;
+        } finally {
+            setIsStreaming(false);
+        }
+    }, []);
+
+    return { response, isStreaming, startStreaming };
+
+}
