@@ -236,17 +236,28 @@ class MongoDB:
 
             print(f"Searching for user with query: {username}, {email}")
 
-            # Make sure users collection is initialized
-            if not hasattr(self, 'users_collection'):
-                self.users_collection = self.db.users
+            if not self.initialized:
+                await self.initialize()
 
-            user = await users.find_one(users.username == username and users.email == email) # Find the user by username and email, if both are provided in the query. If only one is provided, it will find the user by that field. If neither is provided, it will return None.
+            # Create query filter based on provided parameters
+            query_filter = {}
+            if username:
+                query_filter["username"] = username
+            if email:
+                query_filter["email"] = email
+                
+            # If no search parameters provided, return None
+            if not query_filter:
+                return None
+
+            # Use the find_one method with the query filter
+            user = await users.find_one(query_filter)
             print(f"Found user: {user}")
 
             if not user:
                 return None
 
-            return user.id
+            return str(user.id)
         except Exception as e:
             print(f"Error in search_user: {e}")
             return None

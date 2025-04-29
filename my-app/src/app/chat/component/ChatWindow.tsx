@@ -1,62 +1,15 @@
 "use client";
 
-import React, { useEffect, useState, useRef, useCallback, useMemo, memo } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo} from 'react';
 import { useUserStore } from '../../../../types/UserStore';
 import { Message } from '../../../../types/message';
 import { useChathistory, useCreateConversation, useStreamedResponse } from '../../api/hooks';
 import Link from 'next/link';
 import TypingIndicator from './TypingIndicator';
-import ReactMarkdown from 'react-markdown';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
-
-// Memoized message component for better performance
-const ChatMessage = memo(({ message }: { message: Message }) => {
-    const isUser = message.role === 'user';
-
-    return (
-        <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
-            <div
-                className={`max-w-[80%] p-3 rounded-lg ${isUser
-                    ? 'bg-blue-500 text-white rounded-tr-none'
-                    : 'bg-gray-200 text-gray-800 rounded-tl-none'}`}
-            >
-                <ReactMarkdown
-                    components={{
-                        code({ node, inline, className, children, ...props}: {
-                            node?: any;
-                            inline?: boolean;
-                            className?: string;
-                            children: React.ReactNode;
-                            [key: string]: any;
-                        }) {
-                            const match = /language-(\w+)/.exec(className || '');
-                            return !inline && match ? (
-                                <SyntaxHighlighter
-                                    style={atomDark}
-                                    language={match[1]}
-                                    PreTag="div"
-                                    {...props}
-                                >
-                                    {String(children).replace(/\n$/, '')}
-                                </SyntaxHighlighter>
-                            ) : (
-                                <code className={className} {...props}>
-                                    {children}
-                                </code>
-                            );
-                        }
-                    }}
-                >
-                    {message.content}
-                </ReactMarkdown>
-            </div>
-        </div>
-    );
-});
+import ChatMessage from './ChatMessage';
+import ChatInput from './ChatInput';
 
 // Set display name for memo component
-ChatMessage.displayName = 'ChatMessage';
 
 const ChatWindow: React.FC = () => {
     const { conversation_id, userId, sessionId, setConversationId, isAuthenticated } = useUserStore();
@@ -145,6 +98,7 @@ const ChatWindow: React.FC = () => {
                         console.log("SUCCESS: Created conversation:", data);
                         if (data && data.id) {
                             setConversationId(data.id);
+                            setPendingMessages([]);
                         }
                     },
                     onError: (error) => {
@@ -248,7 +202,9 @@ const ChatWindow: React.FC = () => {
     return (
         <div className="flex flex-col h-full w-full max-w-4xl mx-auto">
             {/* Messages display area */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+
+            
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 max-w-full">
                 {messages && messages.length > 0 ? (
                     messages.map((msg: Message, index: number) => (
                         <ChatMessage key={`${msg.timestamp}-${index}`} message={msg} />
@@ -270,37 +226,14 @@ const ChatWindow: React.FC = () => {
             </div>
 
             {/* Message input area */}
-            <div className="border-t border-gray-200 p-4">
-                <div className="flex items-center space-x-2">
-                    <input
-                        type="text"
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
-                        placeholder="Type your message..."
-                        disabled={isStreaming}
-                        className="flex-1 border text-white border-gray-300 rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                    <button
-                        onClick={handleSendMessage}
-                        disabled={!input.trim() || isStreaming}
-                        className={`rounded-full p-2 ${!input.trim() || isStreaming
-                            ? 'bg-gray-300 cursor-not-allowed'
-                            : 'bg-blue-500 hover:bg-blue-600 text-white'}`}
-                    >
-                        {isStreaming ? (
-                            <svg className="w-6 h-6 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                        ) : (
-                            <svg className="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                            </svg>
-                        )}
-                    </button>
-                </div>
-            </div>
+            <footer className="flex justify-center w-full">
+                <ChatInput
+                isStreaming={isStreaming} 
+                input={input} 
+                setInput={setInput} 
+                handleSendMessage={handleSendMessage} 
+                />
+            </footer>
         </div>
     );
 }

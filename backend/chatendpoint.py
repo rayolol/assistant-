@@ -307,12 +307,8 @@ async def get_user_info(
         id = await db.search_user(username=username, email=email)
 
         if not id:
-            # Create user if not found
-            print(f"User not found, creating new user with username: {username}, email: {email}")
-            id = await db.create_user(username=username, email=email)
-            print(f"Returning user ID: {id}")
-            return {"userId": str(id)}
-
+            raise HTTPException(status_code=404, detail="User not found")
+        
         return {"userId": str(id)}
     except Exception as e:
         traceback.print_exc()
