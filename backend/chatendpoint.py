@@ -11,6 +11,7 @@ from memory.redisCache import RedisCache
 from memory.MongoDB import MongoDB
 from core.agent_prompts import agent_response, Streamed_agent_response
 import traceback
+import deprecated
 
 # Rate limiting can be added later if needed
 # from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -102,6 +103,7 @@ async def chat_endpoint_streamed(
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(error))
 
+@DeprecationWarning
 @app.post("/chat", response_model=ChatResponse)
 async def chat_endpoint(
     request: ChatRequest,
@@ -218,6 +220,17 @@ async def debug_endpoint(request: Request):
     print("Received request body:", body)
     return {"received": body}
 
+@app.delete("/chat/conversations/{conversation_id}")
+async def delete_conversation(conversation_id: str, db: MongoDB = Depends(get_db)):
+    """Endpoint to delete a conversation"""
+    try:
+        if not conversation_id:
+            raise HTTPException(status_code=400, detail="conversation_id is required")
+        await db.delete_conversation(conversation_id)
+        return {"message": "Conversation deleted"}
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/chat/conversations/{user_id}")
 async def create_conversation(

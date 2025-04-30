@@ -101,5 +101,16 @@ export const fetchUserId = async (userInfo: {username: string, email: string}) =
     }
 }
 
+export const deleteConversation = async (conversation_id: string) => {
+    try {
+        const response = await instance.delete(`/chat/conversations/${conversation_id}`);
+        return response.data;
+    } catch (error) {
+        console.error("Error deleting conversation:", error);
+        throw error;
+    }
+}
+
+
 
 export default instance;

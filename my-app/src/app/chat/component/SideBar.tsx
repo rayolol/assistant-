@@ -1,11 +1,12 @@
 "use client";
 import { Conversation } from '../../../../types/conversation';
 import { useUserStore } from '../../../../types/UserStore';
-import { useConversations, useCreateConversation } from '../../api/hooks';
+import { useConversations, useCreateConversation } from '../../hooks/hooks';
+import { deleteConversation } from '@/app/api/api';
 import React, { useState, useMemo } from 'react';
 
 const DropdownMenu: React.FC<{ isOpen: boolean, setIsOpen: (isOpen: boolean) => void, position: {x: number, y: number} }> = ({ isOpen , setIsOpen, position }) => {
-    
+    const { conversation_id } = useUserStore();
 
     return (
         <>
@@ -15,7 +16,7 @@ const DropdownMenu: React.FC<{ isOpen: boolean, setIsOpen: (isOpen: boolean) => 
                         onMouseLeave={() => setIsOpen(false)}
                         style={{top: position.y + "px", left: position.x + "px"}}
                         >
-                    <option className="block bg-slate-600 hover:bg-gray-700" value="Delete" onClick={() => console.log("Delete")}>
+                    <option className="block bg-slate-600 hover:bg-gray-700" value="Delete" onClick={() => deleteConversation(conversation_id)}>
                         Delete
                     </option>
                     <option className="block bg-slate-600 hover:bg-gray-700" value="EditName" onClick={() => console.log("Edit")}>
@@ -42,38 +43,35 @@ const SideBar: React.FC = () => {
 
 
 
+    // Combine fetched conversations with any pending ones
     const conversations = useMemo(() => {
-            return [...fetchedconversations, ...pendingConversations];
-        }, [fetchedconversations, pendingConversations]);
+        // If we have a real conversation ID, clear any pending conversations
+        if (conversation_id && conversation_id !== 'pending' && pendingConversations.length > 0) {
+            setPendingConversations([]);
+        }
+
+        // If we're in "pending" mode but don't have a pending conversation in the list, add one
+        if (conversation_id === 'pending' && !pendingConversations.some(conv => conv.id === 'pending')) {
+            const pendingConv: Conversation = {
+                id: 'pending',
+                name: 'New Conversation',
+                started_at: new Date().toISOString(),
+                last_active: new Date().toISOString()
+            };
+            setPendingConversations([pendingConv]);
+        }
+
+        return [...fetchedconversations, ...pendingConversations];
+    }, [fetchedconversations, pendingConversations, conversation_id]);
 
 
 
     const handleCreateConverstaion = () => {
         if (userId) {
-
-           
-
-            const conv: Conversation = {
-                id: "pending",
-                name: "New Conversation",
-                started_at: new Date().toISOString(),
-                last_active: new Date().toISOString()
-            }
-
-            setPendingConversations((prev: Conversation[]) => [...prev, conv]);
-            createConversation({ user_id: userId, name: "New Conversation" }, {
-
-                onSuccess: (data) => {
-                    console.log("Conversation created successfully:", data);
-                    if (data.id) {
-                        setConversationId(data.id);
-                        setPendingConversations([]);
-                    }
-                },
-                onError: (error) => {
-                    console.error("Error creating conversation:", error);
-                }
-            });
+            // Just set the conversation ID to null or 'pending'
+            // This will trigger the creation of a new conversation when the user sends a message
+            setConversationId('pending');
+            console.log("Ready for new conversation - will be created when user sends a message");
         } else {
             console.log("User ID not found");
         }
@@ -99,12 +97,12 @@ const SideBar: React.FC = () => {
                     conversations.map((conv: Conversation ) => (
                         <li key={conv.id && conv.last_active}>
                             <button
-                                onClick={() => setConversationId(conv.id)}
+                                onClick={() => {setConversationId(conv.id)}}
                                 onMouseEnter={(e: React.MouseEvent) => {
                                     // Get parent container position
                                     setPosition({
                                       x: e.clientX ,
-                                      y: e.clientY 
+                                      y: e.clientY
                                     });
                                     setIsOpen(true);
                                 }}

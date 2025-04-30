@@ -1,71 +1,23 @@
 "use client";
 
-import React, { useEffect, useState, useRef, useCallback, useMemo} from 'react';
+import React, { useEffect, useRef, useMemo} from 'react';
 import { useUserStore } from '../../../../types/UserStore';
 import { Message } from '../../../../types/message';
-import { useChathistory, useCreateConversation, useStreamedResponse } from '../../api/hooks';
+import { useChathistory } from '../../hooks/hooks';
 import Link from 'next/link';
 import TypingIndicator from './TypingIndicator';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
+import { useMessageHandling } from '../../hooks/useMessageHandling';
 
 // Set display name for memo component
 
+
 const ChatWindow: React.FC = () => {
-    const { conversation_id, userId, sessionId, setConversationId, isAuthenticated } = useUserStore();
+    const { conversation_id, userId, sessionId,username, isAuthenticated } = useUserStore();
+    const { pendingMessages, input, setInput, isStreaming, handleSendMessage } = useMessageHandling(userId, sessionId, conversation_id);
     const { data: fetchedMessages = [], isLoading, error } = useChathistory(conversation_id, userId, sessionId);
-    const { mutate: createConversation } = useCreateConversation();
-    const { response: streamedResponse, isStreaming, startStreaming } = useStreamedResponse(); // Import the hook and its state variables
-    const [input, setInput] = useState('');
-    const [pendingMessages, setPendingMessages] = useState<Message[]>([]);
     const messagesEndRef = useRef<HTMLDivElement>(null);
-
-    // Effect to update the pending messages with the streamed response
-    useEffect(() => {
-        console.log("useEffect triggered with streamedResponse:", streamedResponse);
-        console.log("pendingMessages.length:", pendingMessages.length);
-
-        if (streamedResponse && pendingMessages.length > 0) {
-            console.log("Creating assistant message with response:", streamedResponse);
-
-            // Create a new assistant message with the streamed response
-            const assistantMessage: Message = {
-                user_id: userId,
-                session_id: !sessionId ? "1234567890" : sessionId,
-                conversation_id: conversation_id || '',
-                role: 'assistant',
-                content: streamedResponse,
-                timestamp: new Date().toISOString(),
-                ui_metadata: {},
-                flags: {}
-            };
-
-            // Update the pending messages with the assistant's response
-            setPendingMessages(prev => {
-                console.log("Current pending messages:", prev);
-
-                // Find the last assistant message
-                let assistantIndex = -1;
-                for (let i = prev.length - 1; i >= 0; i--) {
-                    if (prev[i].role === 'assistant') {
-                        assistantIndex = i;
-                        break;
-                    }
-                }
-
-                if (assistantIndex !== -1) {
-                    console.log("Updating existing assistant message at index:", assistantIndex);
-                    // Create a new array with the updated assistant message
-                    const newMessages = [...prev];
-                    newMessages[assistantIndex] = assistantMessage;
-                    return newMessages;
-                } else {
-                    console.log("No assistant message found, adding new one");
-                    return [...prev, assistantMessage];
-                }
-            });
-        }
-    }, [streamedResponse, userId, sessionId, conversation_id, pendingMessages.length]);
 
     // Combine fetched messages with pending messages using useMemo to avoid unnecessary re-renders
     const messages = useMemo(() => {
@@ -79,96 +31,7 @@ const ChatWindow: React.FC = () => {
         }
     }, [messages]);
 
-    // Create a new conversation if none exists
 
-
-    useEffect(() => {
-        console.log("EFFECT RUNNING - Conversation check:", {
-            conversation_id,
-            userId,
-            isAuthenticated
-        });
-
-        if ((!conversation_id || conversation_id === 'None') && userId && isAuthenticated) {
-            console.log("ATTEMPTING TO CREATE conversation for user:", userId);
-            createConversation(
-                { user_id: userId, name: "New Conversation" },
-                {
-                    onSuccess: (data) => {
-                        console.log("SUCCESS: Created conversation:", data);
-                        if (data && data.id) {
-                            setConversationId(data.id);
-                            setPendingMessages([]);
-                        }
-                    },
-                    onError: (error) => {
-                        console.error("ERROR: Failed to create conversation:", error);
-                    }
-                }
-            );
-        } else {
-            console.log("NOT CREATING conversation because:", {
-                missingConversationId: !conversation_id || conversation_id === 'None',
-                missingUserId: !userId,
-                notAuthenticated: !isAuthenticated
-            });
-        }
-    }, [conversation_id, userId, isAuthenticated, createConversation, setConversationId]);
-
-    // Handle sending a message - memoized with useCallback
-    const handleSendMessage = useCallback(() => {
-        if (!input.trim() || isStreaming) return;
-        if (!conversation_id || conversation_id === 'None') {
-            console.error("Cannot send message without a valid conversation_id");
-            return;
-        }
-
-        console.log("Sending message with conversation_id:", conversation_id);
-
-        // Create the message object
-        const userMessage: Message = {
-            user_id: userId,
-            session_id: !sessionId ? "1234567890" : sessionId,
-            conversation_id: conversation_id,
-            role: 'user',
-            content: input,
-            timestamp: new Date().toISOString(),
-            ui_metadata: {},
-            flags: {}
-        };
-
-        console.log("Created user message:", userMessage);
-
-        // Add the message to pending messages immediately
-        setPendingMessages(prev => {
-            console.log("Adding user message to pending messages");
-            return [...prev, userMessage];
-        });
-
-        // Create a placeholder for the assistant's response
-        const assistantPlaceholder: Message = {
-            user_id: userId,
-            session_id: !sessionId ? "1234567890" : sessionId,
-            conversation_id: conversation_id,
-            role: 'assistant',
-            content: '...',
-            timestamp: new Date().toISOString(),
-            ui_metadata: {},
-            flags: {}
-        };
-
-        // Add the placeholder message
-        setPendingMessages(prev => {
-            console.log("Adding assistant placeholder to pending messages");
-            return [...prev, assistantPlaceholder];
-        });
-
-        // Start streaming the response
-        console.log("Starting streaming with message:", userMessage);
-        startStreaming(userMessage);
-
-        setInput('');
-    }, [input, isStreaming, userId, sessionId, conversation_id, startStreaming, setPendingMessages]);
 
     if (!isAuthenticated) {
         return (
@@ -200,22 +63,16 @@ const ChatWindow: React.FC = () => {
     //TODO: clean this area
 
     return (
-        <div className="flex flex-col h-full w-full max-w-4xl mx-auto">
+        <div className={`flex flex-col h-full w-full max-w-4xl mx-auto transition-all duration-300 ease-in-out ${messages.length === 0 && 'justify-center'}` }>
             {/* Messages display area */}
 
-            
+            {messages.length > 0 &&
+
             <div className="flex-1 overflow-y-auto p-4 space-y-4 max-w-full">
-                {messages && messages.length > 0 ? (
+                {messages && messages.length > 0 && (
                     messages.map((msg: Message, index: number) => (
                         <ChatMessage key={`${msg.timestamp}-${index}`} message={msg} />
                     ))
-                ) : (
-                    <div className="flex items-center justify-center h-full">
-                        <div className="text-center text-gray-500">
-                            <p className="text-lg">No messages yet</p>
-                            <p className="text-sm">Start a conversation!</p>
-                        </div>
-                    </div>
                 )}
                 {isStreaming && (
                     <div className="flex justify-start">
@@ -223,15 +80,26 @@ const ChatWindow: React.FC = () => {
                     </div>
                 )}
                 <div ref={messagesEndRef} />
-            </div>
+            </div>}
+
 
             {/* Message input area */}
-            <footer className="flex justify-center w-full">
+            <footer className={`flex flex-col justify-center align-center w-full `}>
+                {messages.length === 0 && (
+                    <>
+                        <h1 className="font-semibold text-2xl text-center text-white">Welcome! {username}</h1>
+                        {conversation_id === 'pending' && (
+                            <p className="text-center text-gray-300 mt-2 mb-4">
+                                Type a message to start a new conversation
+                            </p>
+                        )}
+                    </>
+                )}
                 <ChatInput
-                isStreaming={isStreaming} 
-                input={input} 
-                setInput={setInput} 
-                handleSendMessage={handleSendMessage} 
+                isStreaming={isStreaming}
+                input={input}
+                setInput={setInput}
+                handleSendMessage={handleSendMessage}
                 />
             </footer>
         </div>

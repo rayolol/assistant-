@@ -120,8 +120,7 @@ async def Streamed_agent_response(db: MongoDB, cache: RedisCache, context: Mem0C
         # Process the message (this would typically involve calling an LLM)
         # For now, we'll just echo the message back with a prefix
         full_prompt = await build_full_prompt(memory, cache, db, context, user_input)
-        print(f"Full prompt built: {len(full_prompt)} characters")
-
+        print(f"Full prompt built: {full_prompt}")
         run_config = RunConfig(
                 workflow_name="Memory Assistant Workflow",
                 trace_metadata={"user_id": context.user_id}
@@ -143,7 +142,6 @@ async def Streamed_agent_response(db: MongoDB, cache: RedisCache, context: Mem0C
         response_text = ""
         async for event in result.stream_events():
             if event.type == "raw_response_event" and isinstance(event.data, ResponseTextDeltaEvent):
-                print(f"Streaming delta: {event.data.delta}")
                 response_text += event.data.delta
                 yield event.data.delta
             else:

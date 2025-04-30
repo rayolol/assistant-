@@ -1,8 +1,8 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { fetchConversations, fetchMessagesHistory, sendMessage, createConversation } from './api';
-import { baseURL } from './api';
+import { fetchConversations, fetchMessagesHistory, sendMessage, createConversation } from '../api/api';
+import { baseURL } from '../api/api';
 import { useState, useCallback } from 'react';
 import { Message } from '../../../types/message';
 import axios from 'axios';
@@ -11,17 +11,18 @@ export const useChathistory = (conversation_id: string | null | undefined, user_
     useQuery({
         queryKey: ['messages', conversation_id],
         queryFn: async () => {
-            if (conversation_id && user_id && conversation_id !== 'None' && session_id) {
+            if (conversation_id && user_id && conversation_id !== 'None' && conversation_id !== 'pending' && session_id) {
                 return await fetchMessagesHistory(conversation_id, user_id, session_id);
             }
-            else if (!conversation_id || conversation_id === 'None') {
+            else if (!conversation_id || conversation_id === 'None' || conversation_id === 'pending') {
+                // Return empty array for pending or invalid conversation IDs
                 return [];
             }
             else {
                 return Promise.reject(new Error('Invalid conversation_id or userId'));
             }
         },
-        enabled: Boolean(user_id),
+        enabled: Boolean(user_id) && conversation_id !== 'pending',
         refetchOnWindowFocus: false,
     })
 
@@ -103,6 +104,11 @@ export const useStreamedResponse = () => {
     const [response, setResponse] = useState<string>("");
     const [isStreaming, setIsStreaming] = useState<boolean>(false)
 
+    const resetStreaming = useCallback(() => {
+        setResponse("");
+        setIsStreaming(false);
+    }, []);
+
     const startStreaming = useCallback(async (message: Message) => {
         console.log("Starting streaming with message:", message);
         setResponse("");
@@ -117,7 +123,7 @@ export const useStreamedResponse = () => {
                 body: JSON.stringify(message)
             });
 
-            console.log("Stream response status:", 
+            console.log("Stream response status:",
                 res.status);
             if (!res.ok) {
                 throw new Error(`Stream response error: ${res.status} ${res.statusText}`);
@@ -145,6 +151,6 @@ export const useStreamedResponse = () => {
         }
     }, []);
 
-    return { response, isStreaming, startStreaming };
+    return { response, isStreaming, startStreaming, resetStreaming };
 
 }
