@@ -1,132 +1,125 @@
 "use client";
-
-import { useState, useCallback, useEffect} from 'react';
+import { useEffect } from 'react';
 import { Message } from '../../../types/message';
-import { useStreamedResponse, useCreateConversation } from './hooks';
-import { useUserStore } from '../../../types/UserStore';
+import { useStreamedResponse } from './useStreamingResponse';
+import { useUserStore } from './StoreHooks/UserStore';
+import { useMessageStore } from './StoreHooks/useMessageStore';
+import { useChathistory, useCreateConversation } from './hooks';
 
-export function useMessageHandling(userId: string, sessionId: string, conversation_id: string | null | undefined) {
-  const [pendingMessages, setPendingMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
-  const { setConversationId } = useUserStore();
+export function useMessageHandling() {
+  const { userId, sessionId } = useUserStore();
+  const { currentConversationId, setMessages, messages, setCurrentConversationId } = useMessageStore();
+
+  const { response, isStreaming, startStreaming, resetStreaming } = useStreamedResponse();
+  const { data: fetchedMessages = [], isLoading, error, refetch } = useChathistory(currentConversationId, userId, sessionId);
   const { mutate: createConversation } = useCreateConversation();
 
-  const { response: streamedResponse, isStreaming, startStreaming, resetStreaming } = useStreamedResponse();
-
+  // Clear messages when conversation changes
   useEffect(() => {
-    // Clear all chat-related state when conversation changes
-    setPendingMessages([]);
-    setInput('');
+    console.log("Conversation changed to:", currentConversationId);
+    // First clear the messages
+    setMessages([]);
+    
+    // Then refetch messages for the new conversation
+    if (currentConversationId && userId && sessionId) {
+      refetch();
+    }
+  }, [currentConversationId, userId, sessionId, refetch, setMessages]);
 
-    // Reset the streamed response
-    resetStreaming();
-
-  }, [conversation_id, resetStreaming])
-
-  // Update assistant message when streaming
+  // Set fetched messages once they're loaded
   useEffect(() => {
-    if (streamedResponse && conversation_id) {
-      const assistantMessage: Message = {
+    console.log("Fetched messages changed:", fetchedMessages);
+    if (fetchedMessages.length > 0) {
+      setMessages(fetchedMessages);
+    }
+  }, [fetchedMessages, setMessages]);
+  
+  const sendMessage = async (message: string) => {
+      if (!userId || !sessionId) {
+        throw new Error('User not authenticated');
+      }
+
+      resetStreaming();
+      
+      // If the conversation is pending, create a new one first
+      let actualConversationId = currentConversationId;
+      
+      if (currentConversationId === "pending") {
+        try {
+          // Create a new conversation and wait for the result
+          const result = await new Promise((resolve, reject) => {
+            createConversation(
+              { user_id: userId, name: "New Conversation" },
+              {
+                onSuccess: (data) => resolve(data),
+                onError: (error) => reject(error)
+              }
+            );
+          });
+          
+          // Update the conversation ID with the newly created one
+          actualConversationId = (result as { id: string }).id;
+          setCurrentConversationId(actualConversationId);
+          console.log("Created new conversation with ID:", actualConversationId);
+        } catch (error) {
+          console.error("Failed to create conversation:", error);
+          throw new Error('Failed to create conversation');
+        }
+      }
+      
+      // Now send the message with the actual conversation ID
+      const payload: Message = {
         user_id: userId,
-        session_id: !sessionId ? "1234567890" : sessionId,
-        conversation_id: conversation_id,
-        role: 'assistant',
-        content: streamedResponse,
+        session_id: sessionId,
+        conversation_id: actualConversationId,
+        role: 'user',
+        content: message,
         timestamp: new Date().toISOString(),
         ui_metadata: {},
         flags: {}
       };
+      
+      setMessages((prev) => [...(prev || []), payload]);
+      try {
+        await startStreaming(payload);
+      } catch (error) {
+        console.error("Error sending message:", error);
+      }	
+      resetStreaming();
+  }
 
-      setPendingMessages(prev => {
-        let assistantIndex = -1;
-        for (let i = prev.length - 1; i >= 0; i--) {
-          if (prev[i].role === 'assistant') {
-            assistantIndex = i;
-            break;
-          }
-        }
-
-        if (assistantIndex !== -1) {
-          const newMessages = [...prev];
-          newMessages[assistantIndex] = assistantMessage;
-          return newMessages;
-        } else {
-          return [...prev, assistantMessage];
-        }
-      });
+  useEffect(() => {
+    console.log("Response changed:", response);
+    if (response && !isStreaming ) {
+      const aiMessage: Message = {
+        user_id: userId,
+        session_id: sessionId || "1234567890",
+        conversation_id: currentConversationId,
+        role: 'assistant',
+        content: response,
+        timestamp: new Date().toISOString(),
+        ui_metadata: {},
+        flags: {}
+      };
+      setMessages((prev) => [...(prev || []), aiMessage]);
+      resetStreaming();
     }
-  }, [streamedResponse, userId, sessionId, conversation_id]);
-
-  // Send a message with a valid conversation ID
-  const sendMessage = useCallback((convId: string) => {
-    const userMessage: Message = {
-      user_id: userId,
-      session_id: !sessionId ? "1234567890" : sessionId,
-      conversation_id: convId,
-      role: 'user',
-      content: input,
-      timestamp: new Date().toISOString(),
-      ui_metadata: {},
-      flags: {}
-    };
-
-    setPendingMessages(prev => [...prev, userMessage]);
-
-    const assistantPlaceholder: Message = {
-      user_id: userId,
-      session_id: !sessionId ? "1234567890" : sessionId,
-      conversation_id: convId,
-      role: 'assistant',
-      content: '...',
-      timestamp: new Date().toISOString(),
-      ui_metadata: {},
-      flags: {}
-    };
-
-    setPendingMessages(prev => [...prev, assistantPlaceholder]);
-    startStreaming(userMessage);
-    setInput('');
-  }, [input, userId, sessionId, setPendingMessages, startStreaming, setInput]);
-
-  // Handle sending a message
-  const handleSendMessage = useCallback(() => {
-    if (!input.trim() || isStreaming) return;
-
-    // If we don't have a valid conversation ID, create one first
-    if (!conversation_id || conversation_id === 'None' || conversation_id === 'pending') {
-      if (userId) {
-        console.log("Creating new conversation before sending message");
-
-        createConversation({ user_id: userId, name: "New Conversation" }, {
-          onSuccess: (data) => {
-            console.log("Conversation created successfully:", data);
-            if (data.id) {
-              // Update the conversation ID in the store
-              setConversationId(data.id);
-
-              // Send the message with the new conversation ID
-              sendMessage(data.id);
-            }
-          },
-          onError: (error) => {
-            console.error("Error creating conversation:", error);
-          }
-        });
-      } else {
-        console.error("Cannot create conversation: userId is missing");
-      }
-    } else {
-      // We have a valid conversation ID, send the message
-      sendMessage(conversation_id);
-    }
-  }, [input, isStreaming, userId, conversation_id, createConversation, setConversationId, sendMessage]);
+  }, [response, isStreaming, currentConversationId, userId, sessionId, setMessages, resetStreaming]);
 
   return {
-    pendingMessages,
-    setPendingMessages,
-    input,
-    setInput,
+    sendMessage,
+    response,
     isStreaming,
-    handleSendMessage
+    messages,
+    resetStreaming,
+    isLoading,
+    error,
+    refetch  // Include refetch in the return value
   };
 }
+
+
+
+
+
+

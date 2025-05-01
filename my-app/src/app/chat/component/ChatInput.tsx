@@ -1,19 +1,28 @@
 
+import React, { useState } from 'react';
 
 
 const ChatInput: React.FC<{
     isStreaming: boolean,
-    input: string,
-    setInput: (input: string) => void,
-    handleSendMessage: () => void}
-    > = ({isStreaming, input, setInput, handleSendMessage}) => {
+    sendMessage: (arg0: string) => void}
+    > = ({isStreaming, sendMessage}) => {
+        
+        const [input, setInput] = useState<string>('');
+
+        const handleSubmit = (e: React.FormEvent) => {
+            e.preventDefault();
+            if (input.trim()) {
+                sendMessage(input);
+                setInput('');
+            }
+        };
 
     return (
         <div className="border w-200 rounded-[50px] focus:ring-2 focus:ring-blue-500 m-4 flex flex-col space-y-1.5 border-gray-600 bg-neutral-700 p-4">
             <textarea
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
+                        onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSubmit(e)}
                         placeholder="Type your message..."
                         disabled={isStreaming}
                         rows={1}
@@ -23,7 +32,7 @@ const ChatInput: React.FC<{
                     
                    
                     <button
-                        onClick={handleSendMessage}
+                        onClick={handleSubmit}
                         disabled={!input.trim() || isStreaming}
                         className={`rounded-full p-2 ${!input.trim() || isStreaming
                             ? 'bg-gray-300 cursor-not-allowed'

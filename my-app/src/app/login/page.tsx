@@ -1,20 +1,19 @@
 "use client";
 
-import React, { useState, FormEvent } from 'react';
-import { useUserStore } from '../../../types/UserStore';
+import { FormEvent, useState } from 'react';
+import { useAuth } from '../hooks/useAuth';
 import { useRouter } from 'next/navigation';
 
 const LoginPage = () => {
-    const [username, setUsername] = useState<string>('');
-    const [email, setEmail] = useState<string>('');
-    const [error, setError] = useState<string>('');
-    const { login } = useUserStore();
-    const [debugMode, setDebugMode] = useState<boolean>(false);
+    const [username, setUsername] = useState('');
+    const [email, setEmail] = useState('');
+    const [error, setError] = useState('');
+    const [debugMode, setDebugMode] = useState(false);
+    const { login } = useAuth();
     const router = useRouter();
     
     const handleLogin = (e: FormEvent) => {
         e.preventDefault();
-        setError('');
         
         try {
             if (debugMode) {
@@ -44,7 +43,6 @@ const LoginPage = () => {
             }
         } catch (error) {
             console.log("Error logging in: ", error);
-            setError('Login failed. Please try again.');
         }
     };
 

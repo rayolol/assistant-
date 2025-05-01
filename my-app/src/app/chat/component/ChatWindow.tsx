@@ -1,28 +1,22 @@
 "use client";
 
-import React, { useEffect, useRef, useMemo} from 'react';
-import { useUserStore } from '../../../../types/UserStore';
+import React, { useEffect, useRef} from 'react';
+import { useUserStore } from '../../hooks/StoreHooks/UserStore';
 import { Message } from '../../../../types/message';
-import { useChathistory } from '../../hooks/hooks';
 import Link from 'next/link';
 import TypingIndicator from './TypingIndicator';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 import { useMessageHandling } from '../../hooks/useMessageHandling';
-
-// Set display name for memo component
+import { useMessageStore } from '@/app/hooks/StoreHooks/useMessageStore';
+import StreamingMessage from './StreamingMessage';
 
 
 const ChatWindow: React.FC = () => {
-    const { conversation_id, userId, sessionId,username, isAuthenticated } = useUserStore();
-    const { pendingMessages, input, setInput, isStreaming, handleSendMessage } = useMessageHandling(userId, sessionId, conversation_id);
-    const { data: fetchedMessages = [], isLoading, error } = useChathistory(conversation_id, userId, sessionId);
+    const { userId, sessionId,username, isAuthenticated } = useUserStore();
     const messagesEndRef = useRef<HTMLDivElement>(null);
-
-    // Combine fetched messages with pending messages using useMemo to avoid unnecessary re-renders
-    const messages = useMemo(() => {
-        return [...fetchedMessages, ...pendingMessages];
-    }, [fetchedMessages, pendingMessages]);
+    const { sendMessage, response, isStreaming, isLoading, error, messages } = useMessageHandling();
+    const { currentConversationId } = useMessageStore();
 
     // Scroll to bottom when messages change
     useEffect(() => {
@@ -30,6 +24,18 @@ const ChatWindow: React.FC = () => {
             messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
         }
     }, [messages]);
+
+    const ResponseOBJ: Message = {
+        user_id: userId,
+        session_id: sessionId || "1234567890",
+        conversation_id: currentConversationId,
+        role: 'assistant',
+        content: response,
+        timestamp: new Date().toISOString(),
+        ui_metadata: {},
+        flags: {}
+    }
+
 
 
 
@@ -60,13 +66,12 @@ const ChatWindow: React.FC = () => {
             </div>
         </div>
     );
-    //TODO: clean this area
 
     return (
-        <div className={`flex flex-col h-full w-full max-w-4xl mx-auto transition-all duration-300 ease-in-out ${messages.length === 0 && 'justify-center'}` }>
+        <div className={`flex flex-col h-full w-full max-w-4xl mx-auto transition-all duration-300 ease-in-out ${messages && messages.length === 0 && 'justify-center'}` }>
             {/* Messages display area */}
 
-            {messages.length > 0 &&
+            {messages && messages.length > 0 &&
 
             <div className="flex-1 overflow-y-auto p-4 space-y-4 max-w-full">
                 {messages && messages.length > 0 && (
@@ -79,27 +84,26 @@ const ChatWindow: React.FC = () => {
                         <TypingIndicator />
                     </div>
                 )}
+                {response && (
+                    <div className="flex justify-start">
+                        <StreamingMessage streamContent = {response} message={ResponseOBJ} />
+                    </div>
+                )}
                 <div ref={messagesEndRef} />
             </div>}
 
 
             {/* Message input area */}
             <footer className={`flex flex-col justify-center align-center w-full `}>
-                {messages.length === 0 && (
+                {messages &&messages.length === 0 && (
                     <>
                         <h1 className="font-semibold text-2xl text-center text-white">Welcome! {username}</h1>
-                        {conversation_id === 'pending' && (
-                            <p className="text-center text-gray-300 mt-2 mb-4">
-                                Type a message to start a new conversation
-                            </p>
-                        )}
+                     
                     </>
                 )}
                 <ChatInput
                 isStreaming={isStreaming}
-                input={input}
-                setInput={setInput}
-                handleSendMessage={handleSendMessage}
+                sendMessage={(message) => sendMessage(message)}
                 />
             </footer>
         </div>

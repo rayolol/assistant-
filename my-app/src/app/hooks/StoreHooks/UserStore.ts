@@ -2,7 +2,6 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { fetchUserId } from '@/app/api/api';
 
 
 interface UserStore {
@@ -44,38 +43,22 @@ export const useUserStore = create<UserStore>()(
     setUsername: (username) => set({ username }),
     setEmail: (email) => set({ email }),
     setIsAuthenticated: (isAuthenticated) => set({ isAuthenticated }),
-    setConversationId: (conversation_id) => set({ conversation_id: conversation_id === 'None' || conversation_id === null ? undefined : conversation_id }),
+    setConversationId: (conversation_id) => set({ conversation_id }),
     setSessionId: (sessionId) => set({ sessionId }),
 
     login: (username, email) => {
         set({ username: username, email: email, isAuthenticated: true });
 
-        const fetchUserIdFromBackend = async (username: string, email: string) => {
-            try {
-                const response = await fetchUserId({username, email});
-                if (response && response.userId) {
-                    set({ userId: response.userId });
-                    return response.userId;
-                }
-                throw new Error('User ID not found');
-            } catch (error) {
-                console.error('Error fetching user ID:', error);
-                throw error;
-            }
-        }
-
-        // Call the async function and handle the promise
-        fetchUserIdFromBackend(username, email)
-            .then(userId => {
-                console.log('User ID fetched successfully:', userId);
-            })
-            .catch(error => {
-                console.error('Failed to fetch user ID:', error);
-            });
     },
 
     logout: () => {
-        set({ userId: null, email: null, isAuthenticated: false });
+        set({
+            userId: null,
+            email: null,
+            isAuthenticated: false,
+            conversation_id: null,
+            username: null
+        });
     }
 
 

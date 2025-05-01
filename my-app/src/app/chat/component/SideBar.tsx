@@ -1,9 +1,9 @@
 "use client";
 import { Conversation } from '../../../../types/conversation';
-import { useUserStore } from '../../../../types/UserStore';
-import { useConversations, useCreateConversation } from '../../hooks/hooks';
+import { useUserStore } from '../../hooks/StoreHooks/UserStore';
+import useSidebarData from '../../hooks/useSidebarData';
 import { deleteConversation } from '@/app/api/api';
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 
 const DropdownMenu: React.FC<{ isOpen: boolean, setIsOpen: (isOpen: boolean) => void, position: {x: number, y: number} }> = ({ isOpen , setIsOpen, position }) => {
     const { conversation_id } = useUserStore();
@@ -16,7 +16,7 @@ const DropdownMenu: React.FC<{ isOpen: boolean, setIsOpen: (isOpen: boolean) => 
                         onMouseLeave={() => setIsOpen(false)}
                         style={{top: position.y + "px", left: position.x + "px"}}
                         >
-                    <option className="block bg-slate-600 hover:bg-gray-700" value="Delete" onClick={() => deleteConversation(conversation_id)}>
+                    <option className="block bg-slate-600 hover:bg-gray-700" value="Delete" onClick={() => conversation_id && deleteConversation(conversation_id)}>
                         Delete
                     </option>
                     <option className="block bg-slate-600 hover:bg-gray-700" value="EditName" onClick={() => console.log("Edit")}>
@@ -31,51 +31,10 @@ const DropdownMenu: React.FC<{ isOpen: boolean, setIsOpen: (isOpen: boolean) => 
 
 const SideBar: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false); // State for dropdown menu open/close
-    const { conversation_id, setConversationId, userId, username, email, logout } = useUserStore();
-    const  [postion, setPosition] = useState({x: 0, y: 0});
-    console.log("SideBar - Current userId:", userId);
+    const { username, email, logout } = useUserStore();
+    const [position, setPosition] = useState({x: 0, y: 0}); // Fixed typo in variable name
+    const { currentConversationId, setCurrentConversationId, conversations, isLoading, error, startNewConversation } = useSidebarData()
 
-    const { data: fetchedconversations = [], isLoading, error } = useConversations(userId);
-    console.log("SideBar - Fetched conversations:", fetchedconversations);
-
-    const { mutate: createConversation } = useCreateConversation();
-    const [pendingConversations, setPendingConversations] = useState<Conversation[]>([]);
-
-
-
-    // Combine fetched conversations with any pending ones
-    const conversations = useMemo(() => {
-        // If we have a real conversation ID, clear any pending conversations
-        if (conversation_id && conversation_id !== 'pending' && pendingConversations.length > 0) {
-            setPendingConversations([]);
-        }
-
-        // If we're in "pending" mode but don't have a pending conversation in the list, add one
-        if (conversation_id === 'pending' && !pendingConversations.some(conv => conv.id === 'pending')) {
-            const pendingConv: Conversation = {
-                id: 'pending',
-                name: 'New Conversation',
-                started_at: new Date().toISOString(),
-                last_active: new Date().toISOString()
-            };
-            setPendingConversations([pendingConv]);
-        }
-
-        return [...fetchedconversations, ...pendingConversations];
-    }, [fetchedconversations, pendingConversations, conversation_id]);
-
-
-
-    const handleCreateConverstaion = () => {
-        if (userId) {
-            // Just set the conversation ID to null or 'pending'
-            // This will trigger the creation of a new conversation when the user sends a message
-            setConversationId('pending');
-            console.log("Ready for new conversation - will be created when user sends a message");
-        } else {
-            console.log("User ID not found");
-        }
-    }
 
     if(isLoading) {
         return <div className= "h-50 border-2 border-blue-500 bg-blue-300">Loading...</div>;
@@ -90,14 +49,14 @@ const SideBar: React.FC = () => {
              <header>
                 <h2 className="text-lg text-center font-semibold mb-4">Conversations</h2>
              </header>
-            <button onClick={handleCreateConverstaion} className = "bg-stone-600 hover:bg-slate-600 m-2 text-white font-bold py-2 px-4 rounded"> New Conversation </button>
+             <button className="w-full text-left px-3 cursor-pointer py-2 rounded-xl transition-colors bg-neutral-400 dark:hover:bg-neutral-700 text-gray-800 dark:text-gray-200" onClick={startNewConversation}>Create New Conversation</button>
             <hr></hr>
             <ul className="space-y-2 mt-3 overflow-y-auto flex-1 p-4">
                 {conversations && conversations.length > 0 ? (
-                    conversations.map((conv: Conversation ) => (
-                        <li key={conv.id && conv.last_active}>
+                    conversations.map((conv: Conversation, index: number) => (
+                        <li key={index && conv.id && conv.last_active}>
                             <button
-                                onClick={() => {setConversationId(conv.id)}}
+                                onClick={() => {setCurrentConversationId(conv.id)}}
                                 onMouseEnter={(e: React.MouseEvent) => {
                                     // Get parent container position
                                     setPosition({
@@ -108,9 +67,9 @@ const SideBar: React.FC = () => {
                                 }}
                                 onMouseLeave={() => setIsOpen(false)}
                                 className={`w-full text-left px-3 cursor-pointer py-2 rounded-xl transition-colors ${
-                                    conversation_id === conv.id
+                                    currentConversationId === conv.id
                                         ? 'bg-zinc-400 dark:bg-zinc-700/30 text-gray-800 dark:text-blue-200'
-                                        : 'bg-neural-400 dark:hover:bg-neutral-700 text-gray-800 dark:text-gray-200'
+                                        : 'bg-neutral-700 dark:hover:bg-neutral-700 text-gray-800 dark:text-gray-200'
                                 }`}
                             >
                                 {conv.name || 'New Conversation'}
@@ -121,7 +80,7 @@ const SideBar: React.FC = () => {
                     <div className="text-center text-gray-500 dark:text-gray-400 p-4">No conversations yet</div>
                 )}
             </ul>
-            <DropdownMenu isOpen={isOpen} setIsOpen={setIsOpen} position={postion}></DropdownMenu>
+            <DropdownMenu isOpen={isOpen} setIsOpen={setIsOpen} position={position}></DropdownMenu>
             <footer className=' h-20'>
                 <div className="flex items-center justify-start font-bold gap-4  text-gray-500 dark:text-gray-400 p-4">
                     {username} {email}

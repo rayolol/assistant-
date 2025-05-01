@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import React from "react";
-import { useUserStore } from "../../types/UserStore";
+import { useUserStore } from "./hooks/StoreHooks/UserStore";
 
 
 
