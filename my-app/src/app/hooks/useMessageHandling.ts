@@ -85,7 +85,6 @@ export function useMessageHandling() {
       } catch (error) {
         console.error("Error sending message:", error);
       }	
-      resetStreaming();
   }
 
   useEffect(() => {
