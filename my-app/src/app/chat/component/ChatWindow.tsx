@@ -68,39 +68,40 @@ const ChatWindow: React.FC = () => {
     );
 
     return (
-        <div className={`flex flex-col h-full w-full max-w-4xl mx-auto transition-all duration-300 ease-in-out ${messages && messages.length === 0 && 'justify-center'}` }>
+        <div className={`flex flex-col h-full` }>
             {/* Messages display area */}
-
-            {messages && messages.length > 0 &&
-
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 max-w-full">
-                {messages && messages.length > 0 && (
-                    messages.map((msg: Message, index: number) => (
-                        <ChatMessage key={`${msg.timestamp}-${index}`} message={msg} />
-                    ))
-                )}
-                {isStreaming && (
-                    <div className="flex justify-start">
-                        <TypingIndicator />
-                    </div>
-                )}
-                {response && (
-                    <div className="flex justify-start">
-                        <StreamingMessage streamContent = {response} message={ResponseOBJ} />
+            <div className={`flex-1 overflow-y-auto p-2 sm:p-4 space-y-3 sm:space-y-4 ${messages && messages.length === 0 ? 'flex items-center justify-center' : ''}`}>
+                {messages && messages.length > 0 ? (
+                    <>
+                        {messages.map((msg: Message, index: number) => (
+                            <ChatMessage key={`${msg.timestamp}-${index}`} message={msg} />
+                        ))}
+                        {isStreaming && (
+                            <div className="flex justify-start">
+                                <TypingIndicator />
+                            </div>
+                        )}
+                        {response && (
+                            <div className="flex justify-start w-full">
+                                <StreamingMessage streamContent={response} message={ResponseOBJ} />
+                            </div>
+                        )}
+                    </>
+                ) : (
+                    <div className="text-center px-4 py-8 text-black dark:text-white">
+                        <h1 className="font-semibold text-xl sm:text-2xl text-center mb-4">
+                            Welcome, {username}!
+                        </h1>
+                        <p className="text-gray-800 dark:text-gray-300 max-w-md mx-auto">
+                            Start a new conversation by typing a message below.
+                        </p>
                     </div>
                 )}
                 <div ref={messagesEndRef} />
-            </div>}
-
+            </div>
 
             {/* Message input area */}
-            <footer className={`flex flex-col justify-center align-center w-full `}>
-                {messages &&messages.length === 0 && (
-                    <>
-                        <h1 className="font-semibold text-2xl text-center text-white">Welcome! {username}</h1>
-                     
-                    </>
-                )}
+            <footer className="mt-auto w-full px-2 sm:px-4 sm:pb-4 pt-2">
                 <ChatInput
                 isStreaming={isStreaming}
                 sendMessage={(message) => sendMessage(message)}

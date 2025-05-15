@@ -11,7 +11,6 @@ from memory.redisCache import RedisCache
 from memory.MongoDB import MongoDB
 from core.agent_prompts import agent_response, Streamed_agent_response
 import traceback
-import deprecated
 
 # Rate limiting can be added later if needed
 # from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -44,17 +43,28 @@ async def get_cache():
     """Dependency to get the RedisCache instance"""
     return RedisCache()
 
-async def get_or_create_guest_user(db: MongoDB, user_id: str = None):
+@app.post("/users/get-user-id")
+async def get_or_create_guest_user(request: Request, db: MongoDB = Depends(get_db)):
     """Get or create a guest user"""
-    if not user_id or user_id == "guest":
-        user = await db.search_user("Guest", "Guest@example.com")
-        if not user:
-            # Create the guest user if it doesn't exist
-            user_id = await db.create_user("Guest", "Guest@example.com")
-            print("Created new guest user:", user_id)
-        else:
-            user_id = str(user.id)
-            print("Using existing guest user:", user_id)
+
+    body = await request.json()
+    print(body)
+    username = body.get("username")
+    email = body.get("email")
+
+        
+    print(f"POST /users/get-user-id")
+    if not username and not email:
+        raise HTTPException(status_code=400, detail="Username or email is required")
+
+    user = await db.search_user(username=username, email=email)
+    if not user:
+        # Create the guest user if it doesn't exist
+        user_id = await db.create_user(username, email)
+        print("Created new guest user:", user_id)
+    else:
+        user_id = str(user.id)
+        print("Using existing guest user:", user_id)
     return user_id
 
 async def flush_to_DB(session: ChatSession, cache: RedisCache, db: MongoDB):
@@ -298,7 +308,7 @@ async def get_user_conversations(
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/users/get-user-id")
+#@app.post("/users/get-user-id")
 async def get_user_info(
     request: Request,
     db: MongoDB = Depends(get_db)
