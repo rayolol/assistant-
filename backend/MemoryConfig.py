@@ -4,7 +4,8 @@ config = {
         "config": {
             "model": "gemini-1.5-flash-latest",
             "temperature": 0.2,
-            "max_tokens": 2000
+            "max_tokens": 2000,
+            "api_key": "AIzaSyA_DwCnDeuBha-L-zyPy2hRZiq38Qjr82M"
         }
     },
     "embedder" :{

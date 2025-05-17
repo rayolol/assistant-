@@ -2,44 +2,45 @@
 
 import ChatWindow from './component/ChatWindow';
 import SideBar from './component/SideBar';
-import { CollapsibleSideBar } from '@/components/ui/container';
-import { ContentContainer, SideBarContainer } from '@/components/ui/container';
+import { ContentContainer } from '@/components/ui/container';
 import { useState } from 'react';
+import { Sidebar, SidebarContent, SidebarTrigger, SidebarProvider, useSidebar } from '@/components/ui/sidebar';
+import ChatInput from './component/ChatInput';
+import { useMessageHandling } from '../hooks/useMessageHandling';
+import { useMessageStore } from '../hooks/StoreHooks/useMessageStore';
 
 const ChatPage = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { isStreaming, sendMessage } = useMessageHandling();
   
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-neutral-800">
+    <div className="flex h-screen w-full bg-gray-50 dark:bg-neutral-800">
 
-      <SideBarContainer isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)}>
-        <SideBar />
-      </SideBarContainer>
+        <Sidebar>
+          <SidebarContent>
+            <SidebarTrigger />
+            <SideBar />
+          </SidebarContent>
+        </Sidebar>
 
-      {/* Sidebar - hidden on mobile by default */}
-      <CollapsibleSideBar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)}>
-        <SideBar />
-      </CollapsibleSideBar>
-      
-      <ContentContainer fluid={true} className='min-w-0 flex-1'>
-        <button 
-            className="mr-4 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white"
-            onClick={() => setSidebarOpen(true)}
-          >
-            <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-        </button>
+      <ContentContainer fluid={true} className='flex flex-col min-w-0'>
         {/* Header */}
         <header className="w-full bg-white dark:bg-zinc-800 border-b border-gray-200 dark:border-zinc-500 py-4 px-6 flex items-center justify-between">
+          <SidebarTrigger/>
           <h1 className="text-lg font-bold text-gray-800 dark:text-white">Memory Chat</h1>
         </header>
 
         {/* Main content */}
-        <main className="flex-1 overflow-hidden">
-          <ChatWindow />
+        <main className="flex flex-col flex-1 h-full overflow-y-auto">
+           <ChatWindow />
         </main>
 
+      {/* Message input area */}
+                        <footer className="w-full mt-[-60px] px-2 sm:px-4 sm:pb-4 pt-2">
+                            <ChatInput
+                            isStreaming={isStreaming}
+                            sendMessage={(message) => sendMessage(message)}
+                            />
+                        </footer>
 
         
       </ContentContainer>

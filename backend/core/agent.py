@@ -10,6 +10,7 @@ from agents import (
     RunContextWrapper
 )
 
+from config import Model, MODEL_NAME
 
 import os
 from default_tools import DefaultToolBox as DT, Mem0Context
@@ -20,16 +21,7 @@ import inspect
 class Agents:
     """Agents for the chatbot"""
     def __init__(self):
-        load_dotenv()
-        self.MODEL_NAME = os.getenv("MODEL_NAME") or ""
-        self.API_KEY = os.getenv("API_KEY") or ""
-        self.BASE_URL = os.getenv("BASE_URL") or ""
-        if not self.MODEL_NAME or not self.API_KEY or not self.BASE_URL:
-            raise ValueError("MODEL_NAME, API_KEY, and BASE_URL must be set in the environment variables.")
-        self.client = AsyncOpenAI(base_url=self.BASE_URL, api_key=self.API_KEY)
-        set_default_openai_client(client=self.client, use_for_tracing=False)
-        set_default_openai_api("chat_completions")
-        set_tracing_disabled(disabled=True)
+        
         self.settings = ModelSettings(tool_choice = "auto", parallel_tool_calls = True)
 
         self.agent_tools = [DT.add_to_memory, DT.search_memory, DT.get_all_memory, DT.update_memory, DT.delete_memory]
@@ -48,7 +40,7 @@ class Agents:
             agent= Agent[Mem0Context](
                name="Main Memory Assistant",
                instructions=P.AGENT_DEFAULT_PROMPT,
-               model=self.MODEL_NAME,
+               model=Model,
                tools=[],
                handoffs=[],
                model_settings=self.settings
@@ -63,7 +55,7 @@ class Agents:
             agent= Agent[Mem0Context](
                name="Tutor Agent",
                instructions=P.TUTOR_AGENT_INSTRUCTIONS,
-               model=self.MODEL_NAME,
+               model=Model,
                tools=[],
                handoffs=[],
                model_settings=self.settings
@@ -78,7 +70,7 @@ class Agents:
             agent=Agent[Mem0Context](
                instructions=P.CODING_AGENT_INSTRUCTIONS,
                name="Coding Assistant",
-               model=self.MODEL_NAME,
+               model=Model,
                tools=[],
                handoffs=[],
                model_settings=self.settings
@@ -124,7 +116,7 @@ class Agents:
         return Agent[Mem0Context](
                instructions=P.CODING_AGENT_INSTRUCTIONS,
                name="Coding Assistant",
-               model=self.MODEL_NAME,
+               model=Model,
                tools= [DT.add_to_memory, DT.search_memory, DT.get_all_memory, DT.update_memory, DT.delete_memory],
                handoffs=[self.back_to_main, self.tutor_handoff],
                model_settings=self.settings
@@ -141,7 +133,7 @@ class Agents:
         return Agent[Mem0Context](
                name="Main Memory Assistant",
                instructions=P.AGENT_DEFAULT_PROMPT,
-               model=self.MODEL_NAME,
+               model=Model,
                tools= [DT.add_to_memory, DT.search_memory, DT.get_all_memory, DT.update_memory, DT.delete_memory],
                handoffs=[self.coding_handoff, self.tutor_handoff],
                model_settings=self.settings
@@ -158,7 +150,7 @@ class Agents:
         return Agent[Mem0Context](
             name="Tutor Agent",
             instructions=P.TUTOR_AGENT_INSTRUCTIONS,
-            model=self.MODEL_NAME,
+            model=Model,
             tools= [DT.add_to_memory, DT.search_memory, DT.get_all_memory, DT.update_memory, DT.delete_memory],
             handoffs=[self.back_to_main, self.coding_handoff],
             model_settings=self.settings

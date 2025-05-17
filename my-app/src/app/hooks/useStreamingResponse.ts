@@ -1,23 +1,23 @@
 "use client";
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import { Message } from '../../../types/message';
 import { baseURL } from '../api/api';
-
+import { useMessageStore } from './StoreHooks/useMessageStore';
 
 
 export const useStreamedResponse = () => {
-    const [response, setResponse] = useState<string>("");
-    const [isStreaming, setIsStreaming] = useState<boolean>(false)
+    const {response, setResponse, isStreaming, setIsStreaming, setMessages} = useMessageStore();
 
     const resetStreaming = useCallback(() => {
         setResponse("");
         setIsStreaming(false);
-    }, []);
+    }, [setResponse, setIsStreaming]);
 
     const startStreaming = useCallback(async (message: Message) => {
         console.log("Starting streaming with message:", message);
         setResponse("");
         setIsStreaming(true);
+        let finalResponse:string = "";
         try {
             console.log("Fetching from:", `${baseURL}/chat/streamed`);
             const res = await fetch(`${baseURL}/chat/streamed`, {
@@ -41,11 +41,25 @@ export const useStreamedResponse = () => {
                 const { value, done } = await reader.read();
                 if (done) break;
                 const chunk = decoder.decode(value, { stream: true });
-                setResponse((prev: string) => {
-                    const newResponse = prev + chunk;
-                    return newResponse;
-                });
+                finalResponse += chunk;
+                setResponse(finalResponse);
             }
+            console.log("Response changed:", response);
+            if (response && !isStreaming ) {
+
+            const aiMessage: Message = {
+                user_id: message.user_id,
+                session_id: message.session_id,
+                conversation_id: message.conversation_id,
+                role: 'assistant',
+                content: finalResponse,
+                timestamp: new Date().toISOString(),
+                ui_metadata: {},
+                flags: {}
+            };
+            setMessages((prev) => [...(prev || []), aiMessage]);
+            resetStreaming();
+    }
         } catch (error) {
             console.error("Error sending message:", error);
             throw error;

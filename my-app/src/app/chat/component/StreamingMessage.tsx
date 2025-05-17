@@ -17,7 +17,7 @@ const StreamingMessage = memo(({ message, streamContent }: StreamingMessageProps
 
   return (
     <div className="flex justify-start">
-      <div className="pt-4 text-white max-w-full">
+      <div className="pt-4 text-black max-w-full">
         <ReactMarkdown
           remarkPlugins={[remarkGfm, remarkBreaks]}
           components={{

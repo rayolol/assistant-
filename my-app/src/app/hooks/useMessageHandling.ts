@@ -1,5 +1,5 @@
 "use client";
-import { useEffect } from 'react';
+import { useEffect} from 'react';
 import { Message } from '../../../types/message';
 import { useStreamedResponse } from './useStreamingResponse';
 import { useUserStore } from './StoreHooks/UserStore';
@@ -9,6 +9,7 @@ import { useChathistory, useCreateConversation } from './hooks';
 export function useMessageHandling() {
   const { userId, sessionId } = useUserStore();
   const { currentConversationId, setMessages, messages, setCurrentConversationId } = useMessageStore();
+
 
   const { response, isStreaming, startStreaming, resetStreaming } = useStreamedResponse();
   const { data: fetchedMessages = [], isLoading, error, refetch } = useChathistory(currentConversationId, userId, sessionId);
@@ -88,21 +89,8 @@ export function useMessageHandling() {
   }
 
   useEffect(() => {
-    console.log("Response changed:", response);
-    if (response && !isStreaming ) {
-      const aiMessage: Message = {
-        user_id: userId,
-        session_id: sessionId || "1234567890",
-        conversation_id: currentConversationId,
-        role: 'assistant',
-        content: response,
-        timestamp: new Date().toISOString(),
-        ui_metadata: {},
-        flags: {}
-      };
-      setMessages((prev) => [...(prev || []), aiMessage]);
-      resetStreaming();
-    }
+    
+   
   }, [response, isStreaming, currentConversationId, userId, sessionId, setMessages, resetStreaming]);
 
   return {

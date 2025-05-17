@@ -2,14 +2,17 @@
 
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { SidebarProvider } from '@/components/ui/sidebar';
 
 // Create a client
 const queryClient = new QueryClient();
 
 export function Providers({ children }: { children: React.ReactNode }) {
-  return (
+  return ( 
     <QueryClientProvider client={queryClient}>
-      {children}
+      <SidebarProvider>
+        {children}
+      </SidebarProvider>
     </QueryClientProvider>
   );
 }

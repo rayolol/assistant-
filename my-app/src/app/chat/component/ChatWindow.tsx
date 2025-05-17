@@ -6,16 +6,16 @@ import { Message } from '../../../../types/message';
 import Link from 'next/link';
 import TypingIndicator from './TypingIndicator';
 import ChatMessage from './ChatMessage';
-import ChatInput from './ChatInput';
 import { useMessageHandling } from '../../hooks/useMessageHandling';
 import { useMessageStore } from '@/app/hooks/StoreHooks/useMessageStore';
 import StreamingMessage from './StreamingMessage';
+import ChatInput from './ChatInput';
 
 
 const ChatWindow: React.FC = () => {
     const { userId, sessionId,username, isAuthenticated } = useUserStore();
     const messagesEndRef = useRef<HTMLDivElement>(null);
-    const { sendMessage, response, isStreaming, isLoading, error, messages } = useMessageHandling();
+    const { response, isStreaming, isLoading, error, messages, sendMessage } = useMessageHandling();
     const { currentConversationId } = useMessageStore();
 
     // Scroll to bottom when messages change
@@ -68,9 +68,8 @@ const ChatWindow: React.FC = () => {
     );
 
     return (
-        <div className={`flex flex-col h-full` }>
+        <div className={`flex-1 p-4 sm:p-4 space-y-4 sm:space-y-4 ${messages && messages.length === 0 ? 'flex items-center justify-center' : ''}`}>
             {/* Messages display area */}
-            <div className={`flex-1 overflow-y-auto p-2 sm:p-4 space-y-3 sm:space-y-4 ${messages && messages.length === 0 ? 'flex items-center justify-center' : ''}`}>
                 {messages && messages.length > 0 ? (
                     <>
                         {messages.map((msg: Message, index: number) => (
@@ -98,15 +97,7 @@ const ChatWindow: React.FC = () => {
                     </div>
                 )}
                 <div ref={messagesEndRef} />
-            </div>
-
-            {/* Message input area */}
-            <footer className="mt-auto w-full px-2 sm:px-4 sm:pb-4 pt-2">
-                <ChatInput
-                isStreaming={isStreaming}
-                sendMessage={(message) => sendMessage(message)}
-                />
-            </footer>
+                
         </div>
     );
 }

@@ -9,6 +9,12 @@ interface ChatStore {
 
     messages: Message[] | null;
     setMessages: (messages: Message[] | null | ((prev: Message[] | null) => Message[])) => void;
+
+    response: string;
+    setResponse: (response: string) => void;
+
+    isStreaming: boolean;
+    setIsStreaming: (isStreaming: boolean) => void;
 }
 
 export const useMessageStore = create<ChatStore>()((set) => ({
@@ -19,4 +25,13 @@ export const useMessageStore = create<ChatStore>()((set) => ({
     setMessages: (messages) => set((state) => ({
         messages: typeof messages === 'function' ? messages(state.messages || []) : messages
     })),
+
+    response: "",
+    setResponse: (response: string | ((prev: string) => string)) =>
+    set((state) => ({
+    response: typeof response === 'function' ? response(state.response) : response,
+  })),
+
+    isStreaming: false,
+    setIsStreaming: (isStreaming) => set({ isStreaming }),
 }));

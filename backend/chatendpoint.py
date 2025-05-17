@@ -43,7 +43,6 @@ async def get_cache():
     """Dependency to get the RedisCache instance"""
     return RedisCache()
 
-@app.post("/users/get-user-id")
 async def get_or_create_guest_user(request: Request, db: MongoDB = Depends(get_db)):
     """Get or create a guest user"""
 
@@ -183,7 +182,6 @@ async def send_chat_history(conversation_id: str,session_id: str, user_id: str, 
         raise HTTPException(status_code=400, detail="conversation_id and user_id are required")
     try:
         # Handle guest user
-        user_id = await get_or_create_guest_user(db, user_id)
         print(f"Getting chat history for conversation_id={conversation_id}, user_id={user_id}")
 
         # Create a session object
@@ -308,7 +306,7 @@ async def get_user_conversations(
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
-#@app.post("/users/get-user-id")
+@app.post("/users/get-user-id")
 async def get_user_info(
     request: Request,
     db: MongoDB = Depends(get_db)

@@ -12,9 +12,9 @@ const ChatMessage = memo(({ message }: { message: Message }) => {
     return (
         <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
             <div
-                className={`max-w- p-4 rounded-full ${isUser
-                    ? 'bg-zinc-600 text-white'
-                    : 'pt-4 text-white max-w-full'}`}
+                className={`p-4 rounded-full ${isUser
+                    ? 'bg-zinc-600 text-black'
+                    : 'pt-4 text-black max-w-full'}`}
             >
                 {isUser ? (
                     <div className="whitespace-pre-wrap">{message.content}</div>
