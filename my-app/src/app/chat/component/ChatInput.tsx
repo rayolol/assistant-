@@ -41,7 +41,6 @@ const ChatInput: React.FC<{
                             />
                         <div className="flex items-center justify-end space-x-2">
                             
-                        
                             <button
                                 onClick={handleSubmit}
                                 disabled={!input.trim() || isStreaming}

@@ -1,7 +1,7 @@
 """Default tools for the agent"""
 from agents import function_tool, RunContextWrapper
 import traceback
-from models import ToolUsageRecord, Mem0Context
+from models.models import ToolUsageRecord, Mem0Context
 
 memory = None
 
@@ -32,12 +32,14 @@ class DefaultToolBox:
             if memory is None:
                 return "Memory system not initialized"
             
-            if not updated_content or updated_content.strip() == "":
+            if not updated_content.strip() == "":
                 return "Cannot update without content"
             
             print(f"Attempting to update memory with ref: {existing_memory_ref}")
             print(f"Available memories: {context.context.recent_memories}")
             print(f"New content: {updated_content}")
+
+            found_memory = None
             
             if context.context.recent_memories:
                 for entry in context.context.recent_memories:
@@ -45,7 +47,7 @@ class DefaultToolBox:
                         print(f"Found matching memory: {entry}")
                         found_memory = entry
                         break
-                    
+                
                 if found_memory:
                     print(f"Updating memory: {entry['memory']} to {updated_content}")   
                     old_content = found_memory.get("memory", "")
@@ -275,8 +277,8 @@ class DefaultToolBox:
         try:
             global memory
             if memory is None:
-                raise "Memory system not initialized"
-        
+                return "Memory system not initialized"
+            
             memories = memory.get_all(user_id=context.context.user_id or "user")
             context.context.tool_usage_history.append(ToolUsageRecord(
                 tool_name="get_all_memory",

@@ -3,11 +3,9 @@
 import ChatWindow from './component/ChatWindow';
 import SideBar from './component/SideBar';
 import { ContentContainer } from '@/components/ui/container';
-import { useState } from 'react';
-import { Sidebar, SidebarContent, SidebarTrigger, SidebarProvider, useSidebar } from '@/components/ui/sidebar';
+import { Sidebar, SidebarContent, SidebarTrigger } from '@/components/ui/sidebar';
 import ChatInput from './component/ChatInput';
 import { useMessageHandling } from '../hooks/useMessageHandling';
-import { useMessageStore } from '../hooks/StoreHooks/useMessageStore';
 
 const ChatPage = () => {
   const { isStreaming, sendMessage } = useMessageHandling();
@@ -22,7 +20,7 @@ const ChatPage = () => {
           </SidebarContent>
         </Sidebar>
 
-      <ContentContainer fluid={true} className='flex flex-col min-w-0'>
+      <ContentContainer fluid={true} className='flex flex-col min-w-0 items-center'>
         {/* Header */}
         <header className="w-full bg-white dark:bg-zinc-800 border-b border-gray-200 dark:border-zinc-500 py-4 px-6 flex items-center justify-between">
           <SidebarTrigger/>
@@ -35,15 +33,18 @@ const ChatPage = () => {
         </main>
 
       {/* Message input area */}
-                        <footer className="w-full mt-[-60px] px-2 sm:px-4 sm:pb-4 pt-2">
-                            <ChatInput
-                            isStreaming={isStreaming}
-                            sendMessage={(message) => sendMessage(message)}
-                            />
-                        </footer>
+        <footer className="w-full mt-[-60px] px-2 sm:px-4 sm:pb-4 pt-2">
+            <ChatInput isStreaming={isStreaming} sendMessage={(message) => sendMessage(message)}/>
+        </footer>
 
         
       </ContentContainer>
+
+
+       {/* right Sidebar */}
+       <aside className="w-20 bg-white border-1 border-gray-200">
+
+       </aside>
     </div>
   );
 }

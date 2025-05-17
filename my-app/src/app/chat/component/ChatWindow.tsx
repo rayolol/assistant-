@@ -9,13 +9,12 @@ import ChatMessage from './ChatMessage';
 import { useMessageHandling } from '../../hooks/useMessageHandling';
 import { useMessageStore } from '@/app/hooks/StoreHooks/useMessageStore';
 import StreamingMessage from './StreamingMessage';
-import ChatInput from './ChatInput';
 
 
 const ChatWindow: React.FC = () => {
     const { userId, sessionId,username, isAuthenticated } = useUserStore();
     const messagesEndRef = useRef<HTMLDivElement>(null);
-    const { response, isStreaming, isLoading, error, messages, sendMessage } = useMessageHandling();
+    const { response, isStreaming, isLoading, error, messages } = useMessageHandling();
     const { currentConversationId } = useMessageStore();
 
     // Scroll to bottom when messages change
@@ -68,12 +67,12 @@ const ChatWindow: React.FC = () => {
     );
 
     return (
-        <div className={`flex-1 p-4 sm:p-4 space-y-4 sm:space-y-4 ${messages && messages.length === 0 ? 'flex items-center justify-center' : ''}`}>
+        <div className={`flex-1 max-w-4xl p-4 sm:p-4 space-y-4 sm:space-y-4 ${messages && messages.length === 0 ? 'flex items-center justify-center' : ''}`}>
             {/* Messages display area */}
                 {messages && messages.length > 0 ? (
                     <>
                         {messages.map((msg: Message, index: number) => (
-                            <ChatMessage key={`${msg.timestamp}-${index}`} message={msg} />
+                            <ChatMessage key={`${msg.timestamp}-${index}-${msg.role}`} message={msg} />
                         ))}
                         {isStreaming && (
                             <div className="flex justify-start">

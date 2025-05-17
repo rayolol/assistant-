@@ -10,11 +10,11 @@ from agents import (
     RunContextWrapper
 )
 
-from config import Model, MODEL_NAME
+from settings import Model, settings as S
 
 import os
 from default_tools import DefaultToolBox as DT, Mem0Context
-from core import prompts as P
+from prompts import prompts as P
 from dotenv import load_dotenv
 import inspect
 

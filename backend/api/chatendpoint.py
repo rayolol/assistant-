@@ -5,11 +5,11 @@ from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 from typing import List
 from datetime import datetime
-from core.agent import Agents as At
-from models import ChatRequest, ChatResponse, ChatSession, Mem0Context, conversations
+from agents import Agents as At
+from models.models import ChatRequest, ChatResponse, ChatSession, Mem0Context, conversations
 from memory.redisCache import RedisCache
 from memory.MongoDB import MongoDB
-from core.agent_prompts import agent_response, Streamed_agent_response
+from core.agent_prompts import Streamed_agent_response
 import traceback
 
 # Rate limiting can be added later if needed
