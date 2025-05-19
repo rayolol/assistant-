@@ -1,13 +1,13 @@
-from models import ChatMessage
+from models.models import ChatMessage
 
 
-def build_full_prompt(memories: list, history: list[ChatMessage] ,current_conversation_id: str, user_input: str) -> str:
+def build_full_prompt(history: list[ChatMessage] ,memories: dict, current_conversation_id: str, user_input: str) -> str:
     """build the prompt of the assistant"""
     try:
-        results = memories.get("results", [])
+        results = memories.get("results", []) if isinstance(memories, dict) else print("memories is not a dictionary") and []
         memory_str = ''
 
-        for memory in results:
+        for memory in results if results else []:
             memory_str += f"Memory: {memory['memory']}\n"
 
         if history:
@@ -35,4 +35,4 @@ def build_full_prompt(memories: list, history: list[ChatMessage] ,current_conver
         print(f"Error in build_full_prompt: {e}")
         import traceback
         traceback.print_exc()
-        return f"Sorry, I encountered an error: {str(e)}"
+        return f"Sytem: Error building prompt: {str(e)}"

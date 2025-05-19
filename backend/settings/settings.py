@@ -1,7 +1,7 @@
 import sys
 from dotenv import load_dotenv
 from agents.extensions.models.litellm_model import LitellmModel
-from config import settings
+from settings.config import settings
 from agents import set_tracing_disabled
 
 # Set UTF-8 for I/O

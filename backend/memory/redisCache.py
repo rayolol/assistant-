@@ -1,6 +1,6 @@
 import redis.asyncio as r  # Import the Redis library
 import json
-from models import ChatMessage, ChatSession, Mem0Context
+from models.models import ChatMessage, ChatSession, Mem0Context
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 from memory.MongoDB import MongoDB  # Fixed import path
@@ -117,9 +117,14 @@ class RedisCache:
                 else:
                     message_dict['timestamp'] = datetime.now().isoformat()
 
+            # Handle metadata
+            if hasattr(m, 'metadata'):
+                message_dict['metadata'] = m.metadata
+                print(f"Metadata: {message_dict['metadata']}") # to remove later
+
             # Copy other attributes
             for attr, value in m.__dict__.items():
-                if attr not in ['conversation_id', 'timestamp', '__pydantic_fields_set__', '__pydantic_extra__', '__pydantic_private__']:
+                if attr not in ['conversation_id', 'timestamp', 'metadata', '__pydantic_fields_set__', '__pydantic_extra__', '__pydantic_private__']:
                     message_dict[attr] = value
 
             serialized_data.append(message_dict)
@@ -139,6 +144,13 @@ class RedisCache:
                     except ValueError as e:
                         print(f"Error parsing timestamp: {e}")
                         m.timestamp = datetime.now()
+
+                # Ensure metadata is properly handled
+                if not hasattr(m, 'metadata'):
+                    m.metadata = {}
+                elif m.metadata is None:
+                    m.metadata = {}
+
             except Exception as e:
                 print(f"Error during deserialization: {e}")
 

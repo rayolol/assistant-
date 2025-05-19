@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from datetime import datetime
 from typing import List, Dict, Optional, Any
 from beanie import init_beanie, Document , Link
-from models import users, conversations, ChatMessage
+from models.models import users, conversations, ChatMessage
 
 #Create user
 #user = User(username="alex", email="alex@example.com")
@@ -47,7 +47,19 @@ class MongoDB:
     async def add_message(self, messages: ChatMessage, conversation_id: str):
         if not self.initialized:
             await self.initialize()
-        message = ChatMessage(conversation_id = conversation_id, messages = messages)
+        # Ensure metadata is properly handled
+        if not hasattr(messages, 'metadata'):
+            messages.metadata = {}
+        elif messages.metadata is None:
+            messages.metadata = {}
+            
+        message = ChatMessage(
+            conversation_id=conversation_id,
+            role=messages.role,
+            content=messages.content,
+            timestamp=messages.timestamp,
+            metadata=messages.metadata
+        )
         await message.insert()
 
     async def create_conversation(self, user_id: str, name: str = "new conversation"):
@@ -58,7 +70,6 @@ class MongoDB:
         try:
             # Try to find the user first
             from beanie import PydanticObjectId
-            from models import users
 
             # Check if user_id is already a PydanticObjectId
             if not isinstance(user_id, PydanticObjectId):

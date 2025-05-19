@@ -7,12 +7,13 @@ from agents import Runner, RunConfig
 from openai.types.responses import ResponseTextDeltaEvent
 from models.models import ChatMessage, Mem0Context
 from memory.redisCache import RedisCache
-from memory.MongoDB import MongoDB
+from memory.MongoDB import MongoDB 
 from settings.settings import MEMORY_Config as memory_config
 from mem0 import Memory
-from agents.agent import Agents
+from agentic.handoffs.agent import Agents
+from typing import Callable
 
-async def Streamed_agent_response(db: MongoDB, cache: RedisCache, context: Mem0Context, user_input: str):
+async def Streamed_agent_response(db: MongoDB, cache: RedisCache, context: Mem0Context, user_input: str, hooks: dict[str, Callable] | None = None):
     """
     Process a user message through the agent and return the response
 
@@ -21,6 +22,7 @@ async def Streamed_agent_response(db: MongoDB, cache: RedisCache, context: Mem0C
         cache: RedisCache instance
         context: Mem0Context containing conversation context
         user_input: The user's message
+        hooks: Optional dictionary of event type to handler function mappings
 
     Returns:
         The agent's response as a string
@@ -28,22 +30,47 @@ async def Streamed_agent_response(db: MongoDB, cache: RedisCache, context: Mem0C
     try:
         print(f"Starting Streamed_agent_response with input: {user_input}")
         agent = Agents()
+        
+        history = await cache.get_chat_history(db, context.to_chat_session())
+        if not history:
+            history = await cache.load_from_db(context.to_chat_session(), db)
+
+        # Find the last assistant message in this conversation
+        last_assistant_message = None
+        if history and len(history) > 0:
+            for msg in reversed(history):
+                if (msg.role == "assistant" and 
+                    str(msg.conversation_id) == str(context.conversation_id)):
+                    last_assistant_message = msg
+                    break
+
+        # Restore agent state from the last assistant message in this conversation
+        if last_assistant_message and hasattr(last_assistant_message, 'metadata') and 'current_agent' in last_assistant_message.metadata:
+            context.current_agent = last_assistant_message.metadata['current_agent']
+            print(f"Restored previous agent state for conversation {context.conversation_id}: {context.current_agent}")
+        else:
+            # Only reset to main agent if this is a completely new conversation
+            context.current_agent = "main_agent"
+            print(f"Starting new conversation {context.conversation_id} with main agent")
+
         # Add the user message to the context
         user_message = ChatMessage(
             conversation_id=context.conversation_id,
             role="user",
             content=user_input,
+            metadata={"current_agent": context.current_agent}  # Store current agent in user message too
         )
         memory = Memory.from_config(memory_config)
 
         # Add to Redis cache
         await cache.add_message(db, context.to_chat_session(), user_message)
 
-        # Process the message (this would typically involve calling an LLM)
-        # For now, we'll just echo the message back with a prefix
-        history = await cache.get_chat_history(db, context.to_chat_session())
-        if not history:
-            history = await cache.load_from_db(context.to_chat_session(), db)
+        if context.current_agent == "tutor_agent":
+            starting_agent = agent.tutor_agent()
+        elif context.current_agent == "coding_agent":
+            starting_agent = agent.coding_agent()
+        else:
+            starting_agent = agent.Main_agent()
 
         memories = memory.search(
             query=user_input,
@@ -66,10 +93,11 @@ async def Streamed_agent_response(db: MongoDB, cache: RedisCache, context: Mem0C
         # Run the memory agent with the context
         print("Starting streamed run...")
         result = Runner.run_streamed(
-            starting_agent=agent.memory_agent(),
+            starting_agent=starting_agent,
             input=full_prompt,
             context=context,
-            run_config=run_config
+            run_config=run_config,
+            hooks=hooks if hooks else None
             )
 
         print("Stream run initiated, processing events...")
@@ -78,8 +106,11 @@ async def Streamed_agent_response(db: MongoDB, cache: RedisCache, context: Mem0C
             if event.type == "raw_response_event" and isinstance(event.data, ResponseTextDeltaEvent):
                 response_text += event.data.delta
                 yield event.data.delta
-            else:
-                print(f"Non-delta event received: {event.type}")
+            elif event.type == "agent_updated_stream_event":
+                yield f"<Switching to {event.new_agent.name}>"
+            elif event.type == "run_item_stream_event":
+                yield f"<{event.item.type}>"
+            
 
         print(f"Finished streaming, total response length: {len(response_text)}")
 
@@ -88,7 +119,9 @@ async def Streamed_agent_response(db: MongoDB, cache: RedisCache, context: Mem0C
             conversation_id=context.conversation_id,
             role="assistant",
             content=response_text,
+            metadata={"current_agent": context.current_agent}  # Store current agent in metadata
         )
+        print(f"Assistant: {context.current_agent}")
 
         # Add to Redis cache
         await cache.add_message(db, context.to_chat_session(), assistant_message)

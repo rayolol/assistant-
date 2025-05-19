@@ -18,22 +18,20 @@ export function useMessageHandling() {
   // Clear messages when conversation changes
   useEffect(() => {
     console.log("Conversation changed to:", currentConversationId);
-    // First clear the messages
-    setMessages([]);
     
-    // Then refetch messages for the new conversation
-    if (currentConversationId && userId && sessionId) {
+    // Only refetch messages for the new conversation if we're not currently streaming
+    if (currentConversationId && userId && sessionId && !isStreaming) {
       refetch();
     }
-  }, [currentConversationId, userId, sessionId, refetch, setMessages]);
+  }, [currentConversationId, userId, sessionId, refetch, setMessages, isStreaming]);
 
   // Set fetched messages once they're loaded
   useEffect(() => {
     console.log("Fetched messages changed:", fetchedMessages);
-    if (fetchedMessages.length > 0) {
+    if (fetchedMessages.length > 0 && !isStreaming) {
       setMessages(fetchedMessages);
     }
-  }, [fetchedMessages, setMessages]);
+  }, [fetchedMessages, setMessages, isStreaming]);
   
   const sendMessage = async (message: string) => {
       if (!userId || !sessionId) {

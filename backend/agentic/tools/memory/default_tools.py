@@ -9,10 +9,10 @@ def set_memory(mem_instance):
     global memory
     memory = mem_instance
     
-class DefaultToolBox:
-    def __init__(self):
-        
-        pass
+class MemoryTools:
+    def __init__(self, memory_instance):
+        self.memory = memory_instance
+    
     
     def error_function_tool(): 
         return 

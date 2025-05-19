@@ -5,12 +5,12 @@ from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 from typing import List
 from datetime import datetime
-from agents import Agents as At
 from models.models import ChatRequest, ChatResponse, ChatSession, Mem0Context, conversations
 from memory.redisCache import RedisCache
 from memory.MongoDB import MongoDB
-from core.agent_prompts import Streamed_agent_response
+from core.agent_prompts import Streamed_agent_response as Streamed_agent_response
 import traceback
+import requests
 
 # Rate limiting can be added later if needed
 # from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -87,6 +87,13 @@ async def root():
             "/chat": "POST endpoint for chat interactions"
         }
     }
+session = requests.Session()
+
+session.headers.update({
+    "connection": "application/json",
+    "Keep-Alive": "timeout=60, max=1000"
+})
+
 @app.post("/chat/streamed")
 async def chat_endpoint_streamed(
     request: ChatRequest,
@@ -97,81 +104,24 @@ async def chat_endpoint_streamed(
     try:
         context = Mem0Context()
         context.receive_chat_request(request)
-        context.session_start_time = datetime.now()
-        context.current_agent = "main_agent"  # Set a default agent
-
+        context.session_start_time = datetime.now() if context.session_start_time is None else context.session_start_time
         print(f"Received streaming chat request: {request.model_dump()}")
 
         # Process the message and return a streaming response
+        async def content_generator():
+            async for chunk in Streamed_agent_response(db=db, cache=cache, context=context, user_input=request.content):
+                yield chunk.encode('utf-8')
+
         return StreamingResponse(
-            Streamed_agent_response(db=db, cache=cache, context=context, user_input=request.content),
+            content=content_generator(),
             media_type="text/event-stream"
         )
 
     except Exception as error:
         traceback.print_exc()
+        session.close();
+
         raise HTTPException(status_code=500, detail=str(error))
-
-@DeprecationWarning
-@app.post("/chat", response_model=ChatResponse)
-async def chat_endpoint(
-    request: ChatRequest,
-    background_tasks: BackgroundTasks,
-    db: MongoDB = Depends(get_db),
-    cache: RedisCache = Depends(get_cache)
-) -> ChatResponse:
-    """Process a chat message and return the agent's response"""
-    try:
-        # Add debug logging
-        print(f"Received chat request: {request.model_dump()}")
-
-        # Handle guest user or missing user_id
-        if not request.user_id:
-            request.user_id = await get_or_create_guest_user(db, request.user_id)
-
-        # Fix indentation and convert IDs to strings
-        user_id = str(request.user_id)
-        conversation_id = str(request.conversation_id) if request.conversation_id else None
-
-        # Create a new conversation if needed
-        if not conversation_id:
-            new_conversation = conversations(user_id=user_id, name="New Conversation")
-            await new_conversation.insert()
-            conversation_id = str(new_conversation.id)
-            print(f"Created new conversation: {conversation_id}")
-
-        # Create context object
-        context = Mem0Context()
-        context.receive_chat_request(request)
-        context.session_start_time = datetime.now()
-        context.current_agent = "main_agent"  # Set a default agent
-
-        # Process the message
-        response_text = await agent_response(db=db, cache=cache, context=context, user_input=request.content)
-
-        # Create a proper ChatSession object
-        chat_session = ChatSession(
-            user_id=user_id,
-            session_id=request.session_id,
-            conversation_id=conversation_id
-        )
-
-        # Create a proper ChatResponse
-        response = ChatResponse(
-            ChatSession=chat_session,
-            status="success",
-            current_agent=context.current_agent or "default_agent",
-            response=response_text,  # Use the actual response text
-            timestamp=datetime.now().isoformat(),
-            chat_history=context.chat_history
-        )
-
-        return response
-
-    except Exception as e:
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
-
 
 
 @app.get("/chat/{conversation_id}/{user_id}/{session_id}")

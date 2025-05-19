@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from beanie import Document, Link, PydanticObjectId
 from datetime import datetime
 from typing import List, Dict, Any, Optional, Union
@@ -9,13 +9,13 @@ class users(Document):
     username: str
     email: str
 #    password: str
-    created_at: datetime = datetime.now()
+    created_at: datetime = Field(default_factory=datetime.now)
     
 class conversations(Document):
     user_id: Link[users]
     name: str = "new conversation"
-    started_at: datetime = datetime.now()
-    last_active: datetime = datetime.now()
+    started_at: datetime = Field(default_factory=datetime.now)
+    last_active: datetime = Field(default_factory=datetime.now)
 
 class ChatSession(BaseModel):
     user_id: Union[str,PydanticObjectId]
@@ -26,9 +26,10 @@ class ChatSession(BaseModel):
 
 class ChatMessage(Document):
     conversation_id: Union[str, PydanticObjectId ,Link[conversations]]
-    timestamp: datetime | None = None
+    timestamp: datetime = Field(default_factory=datetime.now)
     role: str
     content: str
+    metadata: Dict[str, Any] = Field(default_factory=dict)
     #tool_calls: List[ToolUsageRecord] = []
 
     def __init__(self, **data):
@@ -46,7 +47,7 @@ class ChatMessage(Document):
 
 class ToolUsageRecord(BaseModel):
     tool_name: str
-    timestamp: datetime = None
+    timestamp: datetime = Field(default_factory=datetime.now)
     inputs: Dict[str, Any] = {}
     success: bool = True
     output_summary: str = ""
@@ -63,7 +64,7 @@ class Mem0Context(BaseModel):
     recent_memories: List[Dict[str, Any]] | None = None
     user_id: Union[str | PydanticObjectId] | None = None
     session_id: str | None = None
-    session_start_time: datetime | None = None
+    session_start_time: datetime = Field(default_factory=datetime.now)
     conversation_id: str | None = None
     current_agent: str | None = None
     previous_agent: str | None = None
