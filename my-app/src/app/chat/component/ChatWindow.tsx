@@ -10,33 +10,35 @@ import { useMessageHandling } from '../../hooks/useMessageHandling';
 import { useMessageStore } from '@/app/hooks/StoreHooks/useMessageStore';
 import StreamingMessage from './StreamingMessage';
 
-
 const ChatWindow: React.FC = () => {
-    const { userId, sessionId,username, isAuthenticated } = useUserStore();
+    const { userId, sessionId, username, isAuthenticated } = useUserStore();
     const messagesEndRef = useRef<HTMLDivElement>(null);
-    const { response, isStreaming, isLoading, error, messages } = useMessageHandling();
+    const { responseRef, isStreaming, isLoading, error, messages } = useMessageHandling();
     const { currentConversationId } = useMessageStore();
 
-    // Scroll to bottom when messages change
+    // Scroll to bottom when messages change or response updates
     useEffect(() => {
         if (messagesEndRef.current) {
-            messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+            // Use requestAnimationFrame for smoother scrolling
+            requestAnimationFrame(() => {
+                messagesEndRef.current?.scrollIntoView({ 
+                    behavior: isStreaming ? 'auto' : 'smooth',
+                    block: 'end'
+                });
+            });
         }
-    }, [messages]);
+    }, [messages, isStreaming]);
 
     const ResponseOBJ: Message = {
         user_id: userId,
         session_id: sessionId || "1234567890",
         conversation_id: currentConversationId,
         role: 'assistant',
-        content: response,
+        content: responseRef.current?.textContent || '',
         timestamp: new Date().toISOString(),
         ui_metadata: {},
         flags: {}
     }
-
-
-
 
     if (!isAuthenticated) {
         return (
@@ -69,34 +71,36 @@ const ChatWindow: React.FC = () => {
     return (
         <div className={`flex-1 max-w-4xl p-4 sm:p-4 space-y-4 sm:space-y-4 ${messages && messages.length === 0 ? 'flex items-center justify-center' : ''}`}>
             {/* Messages display area */}
-                {messages && messages.length > 0 ? (
-                    <>
-                        {messages.map((msg: Message, index: number) => (
-                            <ChatMessage key={`${msg.timestamp}-${index}-${msg.role}`} message={msg} />
-                        ))}
-                        {isStreaming && (
-                            <div className="flex justify-start">
-                                <TypingIndicator />
+            {messages && messages.length > 0 ? (
+                <>
+                    {messages.map((msg: Message, index: number) => (
+                        <ChatMessage key={`${msg.timestamp}-${index}-${msg.role}`} message={msg} />
+                    ))}
+                    {(isStreaming || responseRef.current) && (
+                        <div className="flex justify-start w-full">
+                            <div ref={responseRef} className="w-full">
+
                             </div>
-                        )}
-                        {response && (
-                            <div className="flex justify-start w-full">
-                                <StreamingMessage streamContent={response} message={ResponseOBJ} />
-                            </div>
-                        )}
-                    </>
-                ) : (
-                    <div className="text-center px-4 py-8 text-black dark:text-white">
-                        <h1 className="font-semibold text-xl sm:text-2xl text-center mb-4">
-                            Welcome, {username}!
-                        </h1>
-                        <p className="text-gray-800 dark:text-gray-300 max-w-md mx-auto">
-                            Start a new conversation by typing a message below.
-                        </p>
-                    </div>
-                )}
-                <div ref={messagesEndRef} />
-                
+{//                            <StreamingMessage streamContent={responseRef.current?.textContent || ''} message={ResponseOBJ} />
+}                        </div>
+                    )}
+                    {isStreaming && (
+                        <div className="flex justify-start w-full">
+                            <TypingIndicator />
+                        </div>
+                    )}
+                </>
+            ) : (
+                <div className="text-center px-4 py-8 text-black dark:text-white">
+                    <h1 className="font-semibold text-xl sm:text-2xl text-center mb-4">
+                        Welcome, {username}!
+                    </h1>
+                    <p className="text-gray-800 dark:text-gray-300 max-w-md mx-auto">
+                        Start a new conversation by typing a message below.
+                    </p>
+                </div>
+            )}
+            <div ref={messagesEndRef} />
         </div>
     );
 }

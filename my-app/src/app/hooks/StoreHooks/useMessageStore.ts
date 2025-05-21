@@ -19,7 +19,12 @@ interface ChatStore {
 
 export const useMessageStore = create<ChatStore>()((set) => ({
     currentConversationId: null,
-    setCurrentConversationId: (conversationId) => set({ currentConversationId: conversationId }),
+    setCurrentConversationId: (conversationId) => set({ 
+        currentConversationId: conversationId,
+        messages: [], // Clear messages when changing conversation
+        response: "", // Clear response
+        isStreaming: false // Reset streaming state
+    }),
 
     messages: [], // Initialize as empty array instead of null
     setMessages: (messages) => set((state) => ({

@@ -10,6 +10,7 @@ def build_full_prompt(history: list[ChatMessage] ,memories: dict, current_conver
         for memory in results if results else []:
             memory_str += f"Memory: {memory['memory']}\n"
 
+        history_str = None
         if history:
             history_str = ''
             for msg in history:

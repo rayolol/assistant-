@@ -23,7 +23,7 @@ export const sendMessage = async (message: Message) => {
 export const fetchMessagesHistory = async (conversation_id: string, user_id: string | null, session_id: string | null = "1234567890") => {
     try {
         console.log("Fetching messages history for:", { conversation_id, user_id, session_id });
-        const response = await instance.get(`/chat/${conversation_id}/${user_id}/${session_id}`);
+        const response = await instance.get(`/chat/history/${conversation_id}/${user_id}/${session_id}`);
         console.log("Raw API response:", response.data);
 
         // Ensure the response is an array

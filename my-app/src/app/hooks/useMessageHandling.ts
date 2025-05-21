@@ -1,105 +1,208 @@
 "use client";
-import { useEffect} from 'react';
+import { useEffect, useState } from 'react';
 import { Message } from '../../../types/message';
-import { useStreamedResponse } from './useStreamingResponse';
 import { useUserStore } from './StoreHooks/UserStore';
 import { useMessageStore } from './StoreHooks/useMessageStore';
 import { useChathistory, useCreateConversation } from './hooks';
 
 export function useMessageHandling() {
   const { userId, sessionId } = useUserStore();
-  const { currentConversationId, setMessages, messages, setCurrentConversationId } = useMessageStore();
+  const { 
+    currentConversationId, 
+    setMessages, 
+    messages, 
+    setCurrentConversationId, 
+    response, 
+    setResponse, 
+    isStreaming, 
+    setIsStreaming 
+  } = useMessageStore();
 
-
-  const { response, isStreaming, startStreaming, resetStreaming } = useStreamedResponse();
   const { data: fetchedMessages = [], isLoading, error, refetch } = useChathistory(currentConversationId, userId, sessionId);
   const { mutate: createConversation } = useCreateConversation();
-
-  // Clear messages when conversation changes
-  useEffect(() => {
-    console.log("Conversation changed to:", currentConversationId);
-    
-    // Only refetch messages for the new conversation if we're not currently streaming
-    if (currentConversationId && userId && sessionId && !isStreaming) {
-      refetch();
-    }
-  }, [currentConversationId, userId, sessionId, refetch, setMessages, isStreaming]);
-
+  const [streamingConversationId, setStreamingConversationId] = useState<string | null>(null);
   // Set fetched messages once they're loaded
   useEffect(() => {
-    console.log("Fetched messages changed:", fetchedMessages);
-    if (fetchedMessages.length > 0 && !isStreaming) {
+    if (fetchedMessages.length > 0 && currentConversationId && !isStreaming) {
       setMessages(fetchedMessages);
     }
-  }, [fetchedMessages, setMessages, isStreaming]);
-  
+  }, [fetchedMessages, currentConversationId, isStreaming, setMessages]);
+
   const sendMessage = async (message: string) => {
-      if (!userId || !sessionId) {
-        throw new Error('User not authenticated');
-      }
+    if (!userId || !sessionId) {
+      throw new Error('User not authenticated');
+    }
 
-      resetStreaming();
-      
-      // If the conversation is pending, create a new one first
-      let actualConversationId = currentConversationId;
-      
-      if (currentConversationId === "pending") {
-        try {
-          // Create a new conversation and wait for the result
-          const result = await new Promise((resolve, reject) => {
-            createConversation(
-              { user_id: userId, name: "New Conversation" },
-              {
-                onSuccess: (data) => resolve(data),
-                onError: (error) => reject(error)
-              }
-            );
-          });
-          
-          // Update the conversation ID with the newly created one
-          actualConversationId = (result as { id: string }).id;
-          setCurrentConversationId(actualConversationId);
-          console.log("Created new conversation with ID:", actualConversationId);
-        } catch (error) {
-          console.error("Failed to create conversation:", error);
-          throw new Error('Failed to create conversation');
-        }
-      }
-      
-      // Now send the message with the actual conversation ID
-      const payload: Message = {
-        user_id: userId,
-        session_id: sessionId,
-        conversation_id: actualConversationId,
-        role: 'user',
-        content: message,
-        timestamp: new Date().toISOString(),
-        ui_metadata: {},
-        flags: {}
-      };
-      
-      setMessages((prev) => [...(prev || []), payload]);
-      try {
-        await startStreaming(payload);
-      } catch (error) {
-        console.error("Error sending message:", error);
-      }	
-  }
-
-  useEffect(() => {
+    let actualConversationId = currentConversationId;
     
-   
-  }, [response, isStreaming, currentConversationId, userId, sessionId, setMessages, resetStreaming]);
+    if (currentConversationId === "pending") {
+      try {
+        const result = await new Promise((resolve, reject) => {
+          createConversation(
+            { user_id: userId, name: "New Conversation" },
+            {
+              onSuccess: (data) => resolve(data),
+              onError: (error) => reject(error)
+            }
+          );
+        });
+        
+        actualConversationId = (result as { id: string }).id;
+        setCurrentConversationId(actualConversationId);
+      } catch (error) {
+        console.error("Failed to create conversation:", error);
+        throw new Error('Failed to create conversation');
+      }
+    }
+    
+    const payload: Message = {
+      user_id: userId,
+      session_id: sessionId,
+      conversation_id: actualConversationId,
+      role: 'user',
+      content: message,
+      timestamp: new Date().toISOString(),
+      ui_metadata: {},
+      flags: {},
+    };
+    
+    setMessages((prev) => [...(prev || []), payload]);
+
+    try {
+      console.log("Sending message to server: ", message);
+      const encodedMessage = encodeURIComponent(message);
+      const url = `http://localhost:8001/chat/${userId}/${sessionId}/${actualConversationId}?message=${encodedMessage}`;
+      console.log("Connecting to SSE endpoint:", url);
+      
+      const eventSource = new EventSource(url);
+      
+      // Set streaming state to true when starting
+      setIsStreaming(true);
+      setStreamingConversationId(actualConversationId);
+      
+      eventSource.onopen = (event) => {
+        console.log("SSE connection opened:", event);
+      };
+      let responseText = '';
+      let updateTimeout: NodeJS.Timeout | null = null;
+      
+      eventSource.onmessage = (event) => {
+        console.log("Received SSE message:", event.data);
+        responseText += event.data;
+        
+        // Clear any pending update
+        if (updateTimeout) {
+          clearTimeout(updateTimeout);
+        }
+        
+        // Batch updates using setTimeout
+        updateTimeout = setTimeout(() => {
+          setResponse(responseText);
+        }, 25); // Small delay to batch multiple rapid updates
+      };
+
+      eventSource.onerror = (error) => {
+        console.error('EventSource error:', {
+          readyState: eventSource.readyState,
+          url: eventSource.url,
+          error
+        });
+        
+        // Clear any pending update
+        if (updateTimeout) {
+          clearTimeout(updateTimeout);
+        }
+        
+        // Close the connection
+        eventSource.close();
+        
+        // Get the final response before clearing
+        const finalResponse = responseText;
+        
+        // Update streaming state
+        setIsStreaming(false);
+        setStreamingConversationId(null);
+        
+        // Add the complete response as a message
+        if (finalResponse) {
+          const assistantMessage: Message = {
+            user_id: userId,
+            session_id: sessionId,
+            conversation_id: actualConversationId,
+            role: 'assistant',
+            content: finalResponse,
+            timestamp: new Date().toISOString(),
+            ui_metadata: {},
+            flags: {},
+          };
+          
+          setMessages((prev) => [...(prev || []), assistantMessage]);
+          setResponse('');
+        }
+      };
+
+      // Add close event handler
+      eventSource.addEventListener('close', () => {
+        // Clear any pending update
+        if (updateTimeout) {
+          clearTimeout(updateTimeout);
+        }
+        
+        // Get the final response
+        const finalResponse = responseText;
+        
+        // Update streaming state
+        setIsStreaming(false);
+        setStreamingConversationId(null);
+        
+        // Add the complete response as a message
+        if (finalResponse) {
+          const assistantMessage: Message = {
+            user_id: userId,
+            session_id: sessionId,
+            conversation_id: actualConversationId,
+            role: 'assistant',
+            content: finalResponse,
+            timestamp: new Date().toISOString(),
+            ui_metadata: {},
+            flags: {},
+          };
+          
+          setMessages((prev) => [...(prev || []), assistantMessage]);
+          setResponse('');
+        }
+      });
+      
+      return () => {
+        // Clear any pending update
+        if (updateTimeout) {
+          clearTimeout(updateTimeout);
+        }
+        
+        if (eventSource.readyState !== EventSource.CLOSED) {
+          eventSource.close();
+        }
+        
+        // Set streaming state to false on cleanup
+        setIsStreaming(false);
+        setStreamingConversationId(null);
+      };
+    
+    } catch (error) {
+      console.error("Error sending message:", error);
+      setIsStreaming(false);
+    }
+  };
 
   return {
     sendMessage,
-    response,
-    isStreaming,
     messages,
-    resetStreaming,
     isLoading,
     error,
-    refetch  // Include refetch in the return value
+    refetch,
+    response,
+    isStreaming,
+    streamingConversationId
   };
 }
 

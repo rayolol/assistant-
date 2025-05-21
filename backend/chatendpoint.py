@@ -3,7 +3,7 @@ from fastapi import FastAPI, Request, HTTPException, Depends, BackgroundTasks, R
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
-from typing import List
+from typing import List, AsyncGenerator
 from datetime import datetime
 from models.models import ChatRequest, ChatResponse, ChatSession, Mem0Context, conversations
 from memory.redisCache import RedisCache
@@ -11,24 +11,35 @@ from memory.MongoDB import MongoDB
 from core.agent_prompts import Streamed_agent_response as Streamed_agent_response
 import traceback
 import requests
+from http.client import HTTPConnection
+from contextlib import asynccontextmanager
 
 # Rate limiting can be added later if needed
 # from slowapi import Limiter, _rate_limit_exceeded_handler
 
 # Use memory from core.agent_prompts
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    yield
+    # Shutdown
+    session.close()
+
 app = FastAPI(
     title="Memory Chat API",
     description="API for interacting with a memory-based chat agent",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 # Add CORS middleware to allow frontend applications to connect
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins
+    allow_origins=["http://localhost:3000"],  # Your frontend URL
     allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods
-    allow_headers=["*"],  # Allows all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"]
 )
 
 
@@ -124,7 +135,7 @@ async def chat_endpoint_streamed(
         raise HTTPException(status_code=500, detail=str(error))
 
 
-@app.get("/chat/{conversation_id}/{user_id}/{session_id}")
+@app.get("/chat/history/{conversation_id}/{user_id}/{session_id}")
 async def send_chat_history(conversation_id: str,session_id: str, user_id: str, cache: RedisCache = Depends(get_cache), db: MongoDB = Depends(get_db)):
     """Endpoint to retrieve chat history for a given conversation"""
     if not conversation_id or not user_id:
@@ -283,6 +294,54 @@ async def get_user_info(
         return {"userId": str(id)}
     except Exception as e:
         traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/chat/{user_id}/{session_id}/{conversation_id}")
+async def stream_chat(
+    user_id: str,
+    session_id: str,
+    conversation_id: str,
+    message: str,
+    db: MongoDB = Depends(get_db),
+    cache: RedisCache = Depends(get_cache)
+) -> StreamingResponse:
+    try:
+        print(f"Starting SSE stream for user {user_id}, session {session_id}, conversation {conversation_id}")
+        context = Mem0Context(
+            user_id=user_id,
+            session_id=session_id,
+            conversation_id=conversation_id if conversation_id else None,           
+        )
+        
+        async def event_generator():
+            try:
+                async for chunk in Streamed_agent_response(
+                    db=db,
+                    cache=cache,
+                    context=context,
+                    user_input=message
+                ):
+                    if chunk:  # Only send non-empty chunks
+                        print(f"Sending chunk: {chunk}")
+                        yield f"data: {chunk}\n\n"
+            except Exception as e:
+                print(f"Error in event generator: {str(e)}")
+                yield f"data: Error: {str(e)}\n\n"
+                raise
+
+        return StreamingResponse(
+            event_generator(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+                "Content-Type": "text/event-stream"
+            }
+        )
+    except Exception as e:
+        print(f"Error in chat endpoint: {str(e)}")
+        session.close()
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
