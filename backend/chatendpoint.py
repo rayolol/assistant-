@@ -323,7 +323,7 @@ async def stream_chat(
                 ):
                     if chunk:  # Only send non-empty chunks
                         print(f"Sending chunk: {chunk}")
-                        yield f"data: {chunk}\n\n"
+                        yield chunk
             except Exception as e:
                 print(f"Error in event generator: {str(e)}")
                 yield f"data: Error: {str(e)}\n\n"

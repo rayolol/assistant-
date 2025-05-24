@@ -9,12 +9,14 @@ import ChatMessage from './ChatMessage';
 import { useMessageHandling } from '../../hooks/useMessageHandling';
 import { useMessageStore } from '@/app/hooks/StoreHooks/useMessageStore';
 import StreamingMessage from './StreamingMessage';
+import ChatInput from './ChatInput';
 
 const ChatWindow: React.FC = () => {
     const { userId, sessionId, username, isAuthenticated } = useUserStore();
-    const messagesEndRef = useRef<HTMLDivElement>(null);
-    const { responseRef, isStreaming, isLoading, error, messages } = useMessageHandling();
     const { currentConversationId } = useMessageStore();
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+    const { response, isStreaming, sendMessage, messages, isLoading, error } = useMessageHandling();
+
 
     // Scroll to bottom when messages change or response updates
     useEffect(() => {
@@ -27,14 +29,14 @@ const ChatWindow: React.FC = () => {
                 });
             });
         }
-    }, [messages, isStreaming]);
+    }, [isStreaming, messages]);
 
     const ResponseOBJ: Message = {
         user_id: userId,
         session_id: sessionId || "1234567890",
         conversation_id: currentConversationId,
         role: 'assistant',
-        content: responseRef.current?.textContent || '',
+        content: response,
         timestamp: new Date().toISOString(),
         ui_metadata: {},
         flags: {}
@@ -69,38 +71,38 @@ const ChatWindow: React.FC = () => {
     );
 
     return (
-        <div className={`flex-1 max-w-4xl p-4 sm:p-4 space-y-4 sm:space-y-4 ${messages && messages.length === 0 ? 'flex items-center justify-center' : ''}`}>
-            {/* Messages display area */}
-            {messages && messages.length > 0 ? (
-                <>
-                    {messages.map((msg: Message, index: number) => (
-                        <ChatMessage key={`${msg.timestamp}-${index}-${msg.role}`} message={msg} />
-                    ))}
-                    {(isStreaming || responseRef.current) && (
-                        <div className="flex justify-start w-full">
-                            <div ref={responseRef} className="w-full">
-
+        <div className="flex flex-col h-full">
+            <div className={`flex-1 max-w-4xl p-4 sm:p-4 space-y-4 sm:space-y-4 ${messages && messages.length === 0 ? 'flex items-center justify-center' : ''}`}>
+                {/* Messages display area */}
+                {messages && messages.length > 0 ? (
+                    <>
+                        {messages.map((msg: Message, index: number) => (
+                            <ChatMessage key={`${msg.timestamp}-${index}-${msg.role}`} message={msg} />
+                        ))}
+                        {(isStreaming) && (
+                            <div className="flex justify-start w-full">
+                                <StreamingMessage streamContent={response} message={ResponseOBJ} />
                             </div>
-{//                            <StreamingMessage streamContent={responseRef.current?.textContent || ''} message={ResponseOBJ} />
-}                        </div>
-                    )}
-                    {isStreaming && (
-                        <div className="flex justify-start w-full">
-                            <TypingIndicator />
-                        </div>
-                    )}
-                </>
-            ) : (
-                <div className="text-center px-4 py-8 text-black dark:text-white">
-                    <h1 className="font-semibold text-xl sm:text-2xl text-center mb-4">
-                        Welcome, {username}!
-                    </h1>
-                    <p className="text-gray-800 dark:text-gray-300 max-w-md mx-auto">
-                        Start a new conversation by typing a message below.
-                    </p>
-                </div>
-            )}
-            <div ref={messagesEndRef} />
+                        )}
+                        {isStreaming && (
+                            <div className="flex justify-start w-full">
+                                <TypingIndicator />
+                            </div>
+                        )}
+                    </>
+                ) : (
+                    <div className="text-center px-4 py-8 text-black dark:text-white">
+                        <h1 className="font-semibold text-xl sm:text-2xl text-center mb-4">
+                            Welcome, {username}!
+                        </h1>
+                        <p className="text-gray-800 dark:text-gray-300 max-w-md mx-auto">
+                            Start a new conversation by typing a message below.
+                        </p>
+                    </div>
+                )}
+                <div ref={messagesEndRef} />
+            </div>
+           
         </div>
     );
 }

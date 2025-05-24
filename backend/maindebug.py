@@ -6,26 +6,28 @@ from models.models import Mem0Context
 import datetime
 import asyncio
 
-
-db = MongoDB()
-if not db.initialized:
-    asyncio.run(db.initialize())
-cache = RedisCache()
-
-
+async def init_db():
+    db = MongoDB()
+    if not db.initialized:
+        await db.initialize()
+    return db
 
 async def main():
+    # Initialize database and cache
+    db = await init_db()
+    cache = RedisCache()
+    
     while True:
         user_input = input("Enter a message: ")
         if user_input.strip() in ["exit", "quit", "bye"]:
             print("Exiting...")
             break
         
-        Context = Mem0Context(
+        context = Mem0Context(
             user_id="1",
             session_id="1",
             conversation_id="1",
-            current_agent="Main_agent",
+            current_agent="main_agent",
             previous_agent=None,
             tool_usage_history=[],
             response_metrics={},
@@ -37,7 +39,7 @@ async def main():
             async for chunk in Streamed_agent_response(
                 db=db, 
                 cache=cache, 
-                context=Context, 
+                context=context, 
                 user_input=user_input,
             ):
                 print(chunk, end='', flush=True)

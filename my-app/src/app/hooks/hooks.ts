@@ -24,6 +24,10 @@ export const useChathistory = (conversation_id: string | null | undefined, user_
         },
         enabled: Boolean(user_id) && conversation_id !== 'pending',
         refetchOnWindowFocus: false,
+        staleTime: 30000, // Consider data fresh for 30 seconds
+        gcTime: 5 * 60 * 1000, // Keep data in cache for 5 minutes
+        refetchOnMount: false, // Don't refetch on mount if we have cached data
+        refetchOnReconnect: false // Don't refetch on reconnect
     })
 
 export const useSendMessage = () => {

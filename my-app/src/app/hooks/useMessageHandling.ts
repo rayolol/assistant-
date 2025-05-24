@@ -24,7 +24,10 @@ export function useMessageHandling() {
   // Set fetched messages once they're loaded
   useEffect(() => {
     if (fetchedMessages.length > 0 && currentConversationId && !isStreaming) {
-      setMessages(fetchedMessages);
+      const timeout = setTimeout(() => {
+        setMessages(fetchedMessages);
+      }, 1000);
+      return () => clearTimeout(timeout);
     }
   }, [fetchedMessages, currentConversationId, isStreaming, setMessages]);
 
@@ -85,6 +88,7 @@ export function useMessageHandling() {
       };
       let responseText = '';
       let updateTimeout: NodeJS.Timeout | null = null;
+      let animationFrame: number | null = null;
       
       eventSource.onmessage = (event) => {
         console.log("Received SSE message:", event.data);
@@ -97,8 +101,10 @@ export function useMessageHandling() {
         
         // Batch updates using setTimeout
         updateTimeout = setTimeout(() => {
-          setResponse(responseText);
-        }, 25); // Small delay to batch multiple rapid updates
+          animationFrame = requestAnimationFrame(() => {
+            setResponse(responseText);
+          });
+        }, 10); // Small delay to batch multiple rapid updates
       };
 
       eventSource.onerror = (error) => {
@@ -118,13 +124,16 @@ export function useMessageHandling() {
         
         // Get the final response before clearing
         const finalResponse = responseText;
+        if (animationFrame) {
+          cancelAnimationFrame(animationFrame);
+        }
         
         // Update streaming state
         setIsStreaming(false);
         setStreamingConversationId(null);
         
-        // Add the complete response as a message
-        if (finalResponse) {
+        // Add the complete response as a message if we have any content
+        if (finalResponse && finalResponse.trim()) {
           const assistantMessage: Message = {
             user_id: userId,
             session_id: sessionId,
@@ -137,8 +146,11 @@ export function useMessageHandling() {
           };
           
           setMessages((prev) => [...(prev || []), assistantMessage]);
-          setResponse('');
         }
+        
+        // Always clear the response state
+        setResponse('');
+        responseText = '';
       };
 
       // Add close event handler
@@ -147,7 +159,9 @@ export function useMessageHandling() {
         if (updateTimeout) {
           clearTimeout(updateTimeout);
         }
-        
+        if (animationFrame) {
+          cancelAnimationFrame(animationFrame);
+        }
         // Get the final response
         const finalResponse = responseText;
         
@@ -155,8 +169,8 @@ export function useMessageHandling() {
         setIsStreaming(false);
         setStreamingConversationId(null);
         
-        // Add the complete response as a message
-        if (finalResponse) {
+        // Add the complete response as a message if we have any content
+        if (finalResponse && finalResponse.trim()) {
           const assistantMessage: Message = {
             user_id: userId,
             session_id: sessionId,
@@ -169,14 +183,20 @@ export function useMessageHandling() {
           };
           
           setMessages((prev) => [...(prev || []), assistantMessage]);
-          setResponse('');
         }
+        
+        // Always clear the response state
+        setResponse('');
+        responseText = '';
       });
       
       return () => {
         // Clear any pending update
         if (updateTimeout) {
           clearTimeout(updateTimeout);
+        }
+        if (animationFrame) {
+          cancelAnimationFrame(animationFrame);
         }
         
         if (eventSource.readyState !== EventSource.CLOSED) {
@@ -186,11 +206,17 @@ export function useMessageHandling() {
         // Set streaming state to false on cleanup
         setIsStreaming(false);
         setStreamingConversationId(null);
+        
+        // Clear response state
+        setResponse('');
+        responseText = '';
       };
     
     } catch (error) {
       console.error("Error sending message:", error);
       setIsStreaming(false);
+      setStreamingConversationId(null);
+      setResponse('');
     }
   };
 

@@ -21,12 +21,12 @@ export const useMessageStore = create<ChatStore>()((set) => ({
     currentConversationId: null,
     setCurrentConversationId: (conversationId) => set({ 
         currentConversationId: conversationId,
-        messages: [], // Clear messages when changing conversation
-        response: "", // Clear response
-        isStreaming: false // Reset streaming state
+        messages: conversationId !== null ? [] : null,
+        response: "",
+        isStreaming: false
     }),
 
-    messages: [], // Initialize as empty array instead of null
+    messages: [],
     setMessages: (messages) => set((state) => ({
         messages: typeof messages === 'function' ? messages(state.messages || []) : messages
     })),

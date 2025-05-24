@@ -4,6 +4,9 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 import { Message } from '../../../../types/message';
 import type { Components } from 'react-markdown';
 
@@ -22,14 +25,14 @@ const StreamingMessage = memo(({ message, streamContent }: StreamingMessageProps
   const content = streamContent || message.content;
 
   const components: Components = {
-    p: ({ children }) => (
-      <p className="whitespace-pre-wrap mb-4">{children}</p>
+    p: ({ children, ...props }) => (
+      <p className="whitespace-pre-wrap mb-4" {...props}>{children}</p>
     ),
     code: ({ inline, className, children, ...props }: CodeProps) => {
       const match = /language-(\w+)/.exec(className || '');
       return !inline && match ? (
         <SyntaxHighlighter
-          style={atomDark}
+          style={atomDark as any}
           language={match[1]}
           PreTag="div"
           className="my-4 rounded-md"
@@ -44,54 +47,59 @@ const StreamingMessage = memo(({ message, streamContent }: StreamingMessageProps
         </code>
       );
     },
-    ul: ({ children }) => (
-      <ul className="list-disc pl-6 mb-4 space-y-1">{children}</ul>
+    ul: ({ children, ...props }) => (
+      <ul className="list-disc pl-6 mb-4 space-y-1" {...props}>{children}</ul>
     ),
-    ol: ({ children }) => (
-      <ol className="list-decimal pl-6 mb-4 space-y-1">{children}</ol>
+    ol: ({ children, ...props }) => (
+      <ol className="list-decimal pl-6 mb-4 space-y-1" {...props}>{children}</ol>
     ),
-    li: ({ children }) => (
-      <li className="mb-1">{children}</li>
+    li: ({ children, ...props }) => (
+      <li className="mb-1" {...props}>{children}</li>
     ),
-    h1: ({ children }) => (
-      <h1 className="text-2xl font-bold mb-4 mt-6">{children}</h1>
+    h1: ({ children, ...props }) => (
+      <h1 className="text-2xl font-bold mb-4 mt-6" {...props}>{children}</h1>
     ),
-    h2: ({ children }) => (
-      <h2 className="text-xl font-bold mb-3 mt-5">{children}</h2>
+    h2: ({ children, ...props }) => (
+      <h2 className="text-xl font-bold mb-3 mt-5" {...props}>{children}</h2>
     ),
-    h3: ({ children }) => (
-      <h3 className="text-lg font-bold mb-2 mt-4">{children}</h3>
+    h3: ({ children, ...props }) => (
+      <h3 className="text-lg font-bold mb-2 mt-4" {...props}>{children}</h3>
     ),
-    blockquote: ({ children }) => (
-      <blockquote className="border-l-4 border-gray-500 pl-4 py-1 my-4 bg-gray-800/30 rounded-r">{children}</blockquote>
+    blockquote: ({ children, ...props }) => (
+      <blockquote className="border-l-4 border-gray-500 pl-4 py-1 my-4 bg-gray-800/30 rounded-r" {...props}>{children}</blockquote>
     ),
-    table: ({ children }) => (
+    table: ({ children, ...props }) => (
       <div className="overflow-x-auto my-4">
-        <table className="min-w-full border-collapse border border-gray-700">{children}</table>
+        <table className="min-w-full border-collapse border border-gray-700" {...props}>{children}</table>
       </div>
     ),
-    thead: ({ children }) => (
-      <thead className="bg-gray-800">{children}</thead>
+    thead: ({ children, ...props }) => (
+      <thead className="bg-gray-800" {...props}>{children}</thead>
     ),
-    tbody: ({ children }) => (
-      <tbody className="divide-y divide-gray-700">{children}</tbody>
+    tbody: ({ children, ...props }) => (
+      <tbody className="divide-y divide-gray-700" {...props}>{children}</tbody>
     ),
-    tr: ({ children }) => (
-      <tr className="hover:bg-gray-800/50">{children}</tr>
+    tr: ({ children, ...props }) => (
+      <tr className="hover:bg-gray-800/50" {...props}>{children}</tr>
     ),
-    th: ({ children }) => (
-      <th className="px-4 py-2 text-left font-medium text-gray-300 border border-gray-700">{children}</th>
+    th: ({ children, ...props }) => (
+      <th className="px-4 py-2 text-left font-medium text-gray-300 border border-gray-700" {...props}>{children}</th>
     ),
-    td: ({ children }) => (
-      <td className="px-4 py-2 border border-gray-700">{children}</td>
+    td: ({ children, ...props }) => (
+      <td className="px-4 py-2 border border-gray-700" {...props}>{children}</td>
     ),
   };
 
   return (
     <div className="flex justify-start">
-      <div className="pt-4 text-black max-w-full">
+      <div className="pt-4 text-black dark:text-white max-w-full">
         <ReactMarkdown
-          remarkPlugins={[remarkGfm, remarkBreaks]}
+          remarkPlugins={[
+            [remarkGfm, { singleTilde: false }],
+            remarkBreaks,
+            remarkMath
+          ]}
+          rehypePlugins={[rehypeKatex]}
           components={components}
         >
           {content}

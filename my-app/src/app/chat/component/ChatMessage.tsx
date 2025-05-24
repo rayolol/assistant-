@@ -3,6 +3,9 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 import { Message } from '../../../../types/message';
 import { memo } from 'react';
 
@@ -13,14 +16,15 @@ const ChatMessage = memo(({ message }: { message: Message }) => {
         <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
             <div
                 className={`p-4 rounded-full ${isUser
-                    ? 'bg-zinc-600 text-black'
-                    : 'pt-4 text-black max-w-full'}`}
+                    ? 'bg-zinc-600 text-accent-foreground'
+                    : 'pt-4 text-accent-foreground max-w-full'}`}
             >
                 {isUser ? (
                     <div className="whitespace-pre-wrap">{message.content}</div>
                 ) : (
                     <ReactMarkdown
-                        remarkPlugins={[remarkGfm, remarkBreaks]}
+                        remarkPlugins={[remarkGfm, remarkBreaks, remarkMath]}
+                        rehypePlugins={[rehypeKatex]}
                         components={{
                             p: ({ node, children }) => (
                                 <p className="whitespace-pre-wrap mb-4">{children}</p>

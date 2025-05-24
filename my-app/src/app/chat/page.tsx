@@ -1,17 +1,31 @@
 "use client";
-
+import { useTheme } from 'next-themes';
 import ChatWindow from './component/ChatWindow';
 import SideBar from './component/SideBar';
 import { ContentContainer } from '@/components/ui/container';
 import { Sidebar, SidebarContent, SidebarTrigger } from '@/components/ui/sidebar';
 import ChatInput from './component/ChatInput';
 import { useMessageHandling } from '../hooks/useMessageHandling';
+import { Dialog, DialogTrigger, DialogContent, DialogTitle, DialogDescription, DialogHeader, DialogFooter } from '@/components/ui/dialog';
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
+import { Settings } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { useEffect, useState } from 'react';
 
 const ChatPage = () => {
   const { isStreaming, sendMessage } = useMessageHandling();
-  
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  },[])
+
+  if (!mounted) return null;
+
   return (
-    <div className="flex h-screen w-full bg-gray-50 dark:bg-neutral-800">
+    <div className="flex h-screen w-full bg-background text-foreground overflow-y-hidden">
 
         <Sidebar>
           <SidebarContent>
@@ -32,9 +46,9 @@ const ChatPage = () => {
            <ChatWindow />
         </main>
 
-      {/* Message input area */}
-        <footer className="w-full mt-[-60px] px-2 sm:px-4 sm:pb-4 pt-2">
-            <ChatInput isStreaming={isStreaming} sendMessage={(message) => sendMessage(message)}/>
+       {/* Message input area */}
+       <footer className="w-full px-2 sm:px-4 sm:pb-4 pt-2">
+          <ChatInput isStreaming={isStreaming} sendMessage={sendMessage}/>
         </footer>
 
         
@@ -42,8 +56,36 @@ const ChatPage = () => {
 
 
        {/* right Sidebar */}
-       <aside className="w-20 bg-white border-1 border-gray-200">
-
+       <aside className="pt-2 w-20 flex flex-col items-center border-1 border-accent">
+        <Dialog>
+          <DialogTrigger>
+            <Settings className='w-6 h-6 text-gray-500 hover:text-gray-700'/>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Settings</DialogTitle>
+              <hr></hr>
+              <DialogDescription>
+               
+                <div className='flex flex-col gap-2'>
+                  <div className='flex items-center gap-2'>
+                    <Accordion type='single' collapsible>
+                      <AccordionItem value='theme'>
+                        <AccordionTrigger>Theme</AccordionTrigger>
+                        <AccordionContent>
+                          <div className='flex items-center gap-2'>
+                            <Switch id='theme' onCheckedChange={(checked) => { setTheme (checked ? 'dark' : 'light'); }} />
+                            <Label htmlFor='theme'>Dark Mode</Label>
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
+                </div>
+              </div>
+            </DialogDescription>
+            </DialogHeader>
+          </DialogContent>
+        </Dialog>
        </aside>
     </div>
   );

@@ -3,6 +3,7 @@ import { Conversation } from '../../../../types/conversation';
 import { useUserStore } from '../../hooks/StoreHooks/UserStore';
 import useSidebarData from '../../hooks/useSidebarData';
 import { useMessageHandling } from '../../hooks/useMessageHandling';
+import { SidebarMenuButton } from '@/components/ui/sidebar';
 const SideBar: React.FC = () => {
     const { username, email, logout } = useUserStore();
     const { currentConversationId, setCurrentConversationId, conversations, isLoading, error, startNewConversation } = useSidebarData()
@@ -28,7 +29,7 @@ const SideBar: React.FC = () => {
                 {conversations && conversations.length > 0 ? (
                     conversations.map((conv: Conversation, index: number) => (
                         <li key={index && conv.id && conv.last_active}>
-                            <button
+                            <SidebarMenuButton
                                 onClick={() => {setCurrentConversationId(conv.id)}}
                                 className={`w-full text-left flex justify-between px-3 cursor-pointer py-2 rounded-xl transition-colors ${
                                     currentConversationId === conv.id
@@ -43,7 +44,7 @@ const SideBar: React.FC = () => {
                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                     </svg>
                                     }
-                            </button>
+                            </SidebarMenuButton>
                         </li>
                     ))
                 ) : (
