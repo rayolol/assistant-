@@ -7,7 +7,7 @@ import remarkBreaks from 'remark-breaks';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
-import { Message } from '../../../../types/message';
+import { Message } from '../../types/message';
 import type { Components } from 'react-markdown';
 
 interface StreamingMessageProps {

@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchConversations, fetchMessagesHistory, sendMessage, createConversation, fetchUserId } from '../api/api';
 import { baseURL } from '../api/api';
 import { useState, useCallback } from 'react';
-import { Message } from '../../../types/message';
+import { Message } from '../types/message';
 import axios from 'axios';
 
 export const useChathistory = (conversation_id: string | null | undefined, user_id: string | null, session_id: string | null) =>

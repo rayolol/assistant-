@@ -160,3 +160,18 @@ def normalize_id(id_value):
         
     return str(id_value)
 
+class UserPreferences(BaseModel):
+    user_id: Union[str, PydanticObjectId ,Link[users]]
+    occupation: str
+    interests: str
+    custom_prompt: str
+    user_info: str
+
+
+class UserPreferencesDoc(Document):
+    user_id: Union[str, PydanticObjectId ,Link[users]]
+    occupation: Optional[str] = None
+    interests: Optional[str] = None
+    custom_prompt: Optional[str] = None
+    user_info: Optional[str] = None
+

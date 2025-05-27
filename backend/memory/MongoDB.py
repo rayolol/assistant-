@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from datetime import datetime
 from typing import List, Dict, Optional, Any
 from beanie import init_beanie, Document , Link
-from models.models import users, conversations, ChatMessage
+from models.models import users, conversations, ChatMessage, UserPreferencesDoc, UserPreferences
 
 #Create user
 #user = User(username="alex", email="alex@example.com")
@@ -19,6 +19,8 @@ from models.models import users, conversations, ChatMessage
 
 #get history
 #history = await Message.find(chat_history.conversation_id == str(conv.id))
+
+#TODO: refactor the data to be more efficient
 
 class MongoDB:
     def __init__(self,db_name='user_db'):
@@ -279,3 +281,37 @@ class MongoDB:
         if not self.initialized:
             await self.initialize()
         await ChatMessage.find({"_id": conversation_id}).delete()
+
+#TODO: add try except
+    async def create_user_info(self, user_info: UserPreferences):
+        if not self.initialized:
+            await self.initialize()
+        info = await UserPreferencesDoc(user_id=user_info.user_id,
+                                occupation=user_info.occupation,
+                                     interests=user_info.interests,
+                                       custom_prompt=user_info.custom_prompt,
+                                         user_info=user_info.user_info).insert()
+        return info
+    async def update_user_info(self, user_info: UserPreferences):
+        if not self.initialized:
+            await self.initialize()
+        if not await UserPreferencesDoc.find({"user_id": user_info.user_id}).update(user_info):
+            info = await UserPreferencesDoc(user_id=user_info.user_id,
+                                occupation=user_info.occupation,
+                                     interests=user_info.interests,
+                                       custom_prompt=user_info.custom_prompt,
+                                         user_info=user_info.user_info).insert()
+        else:
+            raise Exception("User info not updated")
+        
+        return info
+    
+    async def get_user_info(self, user_id: str):
+        if not self.initialized:
+            await self.initialize()
+        info = await UserPreferencesDoc.find_one({"user_id": user_id})
+        return info
+    
+
+
+

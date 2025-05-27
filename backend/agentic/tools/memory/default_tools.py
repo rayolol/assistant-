@@ -1,17 +1,23 @@
 """Default tools for the agent"""
 from agents import function_tool, RunContextWrapper
+from mem0 import Memory
 import traceback
 from models.models import ToolUsageRecord, Mem0Context
+from settings.settings import MEMORY_Config
+from pydantic import BaseModel
 
 memory = None
 
 def set_memory(mem_instance):
     global memory
     memory = mem_instance
+
+class MemoryInput(BaseModel):
+    content: str
     
 class MemoryTools:
-    def __init__(self, memory_instance):
-        self.memory = memory_instance
+    def __init__(self): 
+        set_memory(Memory.from_config(MEMORY_Config))       
     
     
     def error_function_tool(): 
@@ -20,7 +26,7 @@ class MemoryTools:
     
     @staticmethod
     @function_tool
-    def update_memory(context: RunContextWrapper[Mem0Context], existing_memory_ref: int, updated_content: str = "") -> str:
+    async def update_memory(context: RunContextWrapper[Mem0Context], existing_memory_ref: int, updated_content: str) -> str:
         """
         Update a message in Mem0
         Arg:
@@ -75,7 +81,7 @@ class MemoryTools:
     
     @staticmethod
     @function_tool
-    def delete_memory(
+    async def delete_memory(
         context: RunContextWrapper[Mem0Context],
         existing_memory_ref: int,
     ) -> str:
@@ -166,9 +172,9 @@ class MemoryTools:
     
     @staticmethod
     @function_tool
-    def add_to_memory(
+    async def add_to_memory(
         context: RunContextWrapper[Mem0Context],
-        content: str = "",
+        content: str,
     ) -> str:
         """
         Add a message to Mem0
@@ -221,9 +227,9 @@ class MemoryTools:
 
     @staticmethod
     @function_tool
-    def search_memory(
+    async def search_memory(
         context: RunContextWrapper[Mem0Context],
-        query: str = "",  # Add default empty string
+        query: str,  # Add default empty string
     ) -> str:
         """
         Search for memories in Mem0
@@ -270,7 +276,7 @@ class MemoryTools:
 
     @staticmethod    
     @function_tool
-    def get_all_memory(
+    async def get_all_memory(
         context: RunContextWrapper[Mem0Context],
     ) -> str:
         """Retrieve all memories from Mem0"""

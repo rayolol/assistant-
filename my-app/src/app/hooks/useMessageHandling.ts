@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from 'react';
-import { Message } from '../../../types/message';
+import { Message } from '../types/message';
 import { useUserStore } from './StoreHooks/UserStore';
 import { useMessageStore } from './StoreHooks/useMessageStore';
 import { useChathistory, useCreateConversation } from './hooks';
@@ -93,6 +93,7 @@ export function useMessageHandling() {
       eventSource.onmessage = (event) => {
         console.log("Received SSE message:", event.data);
         responseText += event.data;
+       
         
         // Clear any pending update
         if (updateTimeout) {
@@ -104,7 +105,7 @@ export function useMessageHandling() {
           animationFrame = requestAnimationFrame(() => {
             setResponse(responseText);
           });
-        }, 10); // Small delay to batch multiple rapid updates
+        }, 5); // Small delay to batch multiple rapid updates
       };
 
       eventSource.onerror = (error) => {

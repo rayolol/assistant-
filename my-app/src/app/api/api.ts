@@ -1,7 +1,8 @@
 "use client";
-
+import { UserPreferencesSchema } from '../types/zodTypes/userPreferences';
 import axios from 'axios';
-import { Message } from '../../../types/message';
+import { Message } from '../types/message';
+import { z } from 'zod';
 
 export const baseURL = 'http://localhost:8001'
 
@@ -110,7 +111,15 @@ export const deleteConversation = async (conversation_id: string) => {
         throw error;
     }
 }
-
-
+//TODO: fix the type error
+export const updateUserInfo = async (userPreferences: z.infer<typeof UserPreferencesSchema>) => {
+    try {
+        const response = await instance.put(`/users/update-user-info/${userPreferences.user_id}`, userPreferences);
+        return response.data;
+    } catch (error) {
+        console.error("Error updating user info:", error);
+        throw error;
+    }
+}
 
 export default instance;

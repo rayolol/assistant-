@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef} from 'react';
 import { useUserStore } from '../../hooks/StoreHooks/UserStore';
-import { Message } from '../../../../types/message';
+import { Message } from '../../types/message';
 import Link from 'next/link';
 import TypingIndicator from './TypingIndicator';
 import ChatMessage from './ChatMessage';

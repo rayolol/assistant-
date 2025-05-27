@@ -11,8 +11,9 @@ from memory.MongoDB import MongoDB
 from settings.settings import MEMORY_Config as memory_config, Model
 from mem0 import Memory
 from agentic.handoffs.agent import Agents
-from typing import Callable, Literal
+from typing import Callable, Literal, Optional
 from pydantic import BaseModel
+import json
 
 
 class Step(BaseModel):
@@ -21,6 +22,7 @@ class Step(BaseModel):
     NextAgent: Literal["main_agent", "coding_agent", "tutor_agent", "none"]
 class PlannerOutput(BaseModel):
     steps: list[Step]
+    conversation_name: Optional[str] | None = None
 
 
 async def Streamed_agent_response(db: MongoDB, cache: RedisCache, context: Mem0Context, user_input: str, hooks: dict[str, Callable] | None = None):
@@ -104,6 +106,7 @@ async def Streamed_agent_response(db: MongoDB, cache: RedisCache, context: Mem0C
                                 You will need to plan the next step for the agent.
                                 You will need to decide which agent to handoff to.
                                 You will need to decide which handoff to use.
+                                you will need to decide the name of the conversation. if not clear set none
                 """,
                 model=Model,
                 output_type=PlannerOutput
@@ -134,14 +137,17 @@ async def Streamed_agent_response(db: MongoDB, cache: RedisCache, context: Mem0C
         async for event in result.stream_events():
             if event.type == "raw_response_event" and isinstance(event.data, ResponseTextDeltaEvent):
                 response_text += event.data.delta
-                yield f"data: {event.data.delta}\n\n"
+                yield json.dumps({"data": event.data.delta, "type": "raw_response_event"})
             elif event.type == "agent_updated_stream_event":
-                yield f"data: <Switching to {event.new_agent.name}>\n\n"
+                yield json.dumps({"data": f"Switching to {event.new_agent.name}", "type": "agent_updated_stream_event"})
+                yield json.dumps({"event": event.new_agent.name, "type": "agent_updated_stream_event"})
             elif event.type == "run_item_stream_event":
-                yield f"data: <{event.item.type}>\n\n"
+                yield json.dumps({"data": f"<{event.item.type}>", "type": "run_item_stream_event"})
+                yield json.dumps({"event": event.item.type, "type": "run_item_stream_event"})
             
 
         print(f"Finished streaming, total response length: {len(response_text)}")
+        
 
         # Create the assistant's response
         assistant_message = ChatMessage(

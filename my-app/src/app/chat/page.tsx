@@ -12,6 +12,7 @@ import { Settings } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useEffect, useState } from 'react';
+import { UserPreferencesForm } from './component/form';
 
 const ChatPage = () => {
   const { isStreaming, sendMessage } = useMessageHandling();
@@ -21,6 +22,8 @@ const ChatPage = () => {
   useEffect(() => {
     setMounted(true);
   },[])
+
+ 
 
   if (!mounted) return null;
 
@@ -56,10 +59,10 @@ const ChatPage = () => {
 
 
        {/* right Sidebar */}
-       <aside className="pt-2 w-20 flex flex-col items-center border-1 border-accent">
+       <aside className="pt-2 w-20 flex flex-col items-center border-1 border-sidebar-border bg-sidebar">
         <Dialog>
           <DialogTrigger>
-            <Settings className='w-6 h-6 text-gray-500 hover:text-gray-700'/>
+            <Settings className='w-6 h-6 text-sidebar-accent hover:text-sidebar-accent-foreground'/>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
@@ -76,13 +79,17 @@ const ChatPage = () => {
                           <div className='flex items-center gap-2'>
                             <Switch id='theme' onCheckedChange={(checked) => { setTheme (checked ? 'dark' : 'light'); }} />
                             <Label htmlFor='theme'>Dark Mode</Label>
-                          </div>
+                          </div>                        
                         </AccordionContent>
                       </AccordionItem>
                     </Accordion>
+                  </div>
+                  <hr></hr>
+                  <div>
+                    <UserPreferencesForm />
+                  </div>
                 </div>
-              </div>
-            </DialogDescription>
+              </DialogDescription>
             </DialogHeader>
           </DialogContent>
         </Dialog>

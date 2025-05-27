@@ -1,5 +1,5 @@
 "use client";
-import { Conversation } from '../../../../types/conversation';
+import { Conversation } from '../../types/conversation';
 import { useUserStore } from '../../hooks/StoreHooks/UserStore';
 import useSidebarData from '../../hooks/useSidebarData';
 import { useMessageHandling } from '../../hooks/useMessageHandling';

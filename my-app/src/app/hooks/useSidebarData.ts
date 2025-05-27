@@ -5,7 +5,7 @@ import { useMessageStore } from './StoreHooks/useMessageStore';
 import { fetchConversations } from '../api/api';
 import { useUserStore } from './StoreHooks/UserStore';
 import { useEffect } from 'react';
-import { Conversation } from '../../../types/conversation';
+import { Conversation } from '../types/conversation';
 
 const useSidebarData = () => {
     const { userId } = useUserStore();

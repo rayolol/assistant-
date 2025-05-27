@@ -18,13 +18,16 @@ from prompts import prompts as P
 from dotenv import load_dotenv
 import inspect
 
+#TODO: make dependency injection for memory
 class HandoffInput(BaseModel):
     content: str
 
 class Agents:
     """Agents for the chatbot"""
     def __init__(self):
-        self.settings = ModelSettings(tool_choice = "auto") #parallel_tool_calls = True)
+        self.settings = ModelSettings(tool_choice = "auto")# parallel_tool_calls = True)
+        MT()
+        
 
         # Create a single shared instance of memory tools
         self.memory_tools = [
