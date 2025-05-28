@@ -1,6 +1,6 @@
 import fastapi
-from memory.MongoDB import MongoDB
-from memory.redisCache import RedisCache
+from memory.DB.Mongo.MongoDB import MongoDB
+from memory.Cache.Redis.redisCache import RedisCache
 from api.utils.Dependencies import get_db, get_cache
 import traceback
 from fastapi import Depends, HTTPException
@@ -9,9 +9,9 @@ from models.models import UserPreferences
 SettingsRouter = fastapi.APIRouter()
 
 
+#TODO: add prompt settings to db
 
-
-@SettingsRouter.put("/users/update-user-info/{user_id}", response_model=UserPreferences)
+#@SettingsRouter.put("/users/update-user-info/{user_id}", response_model=UserPreferences)
 async def UpdatePromptSettings(
     request: UserPreferences,
     user_id: str,
@@ -23,9 +23,9 @@ async def UpdatePromptSettings(
             raise HTTPException(status_code=400, detail="user_id is required")
         info = await db.get_user_info(user_id)
         if not info:
-            info = await db.create_user_info(request)
+            info = await db.user.create_user_info(request)
         else:
-            info = await db.update_user_info(request)
+            info = await db.user.update_user_info(request)
 
         info = await db.update_user_info(request)
         if info:
