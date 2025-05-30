@@ -1,7 +1,8 @@
 import fastapi
+from models.schemas import ConversationDTO
 from fastapi import Depends, HTTPException
-from memory.MongoDB import MongoDB
-from memory.redisCache import RedisCache
+from memory.DB.Mongo.MongoDB import MongoDB
+from memory.Cache.Redis.redisCache import RedisCache
 import traceback
 from api.utils.Dependencies import get_db, get_cache
 
@@ -19,7 +20,7 @@ async def get_user_conversations(
         if not user_id:
             raise HTTPException(status_code=400, detail="user_id is required")
         # Get all conversations for the user
-        conversations = await db.get_conversation(user_id)
+        conversations = await db.conversation.get_by_user_id(user_id)
 
         # If conversations is None or empty, return an empty list
         if not conversations:
@@ -29,36 +30,24 @@ async def get_user_conversations(
         if not isinstance(conversations, list):
             conversations = [conversations]
 
-        # Format the response
-        result = []
-        for conv in conversations:
-            # Handle both dictionary and object formats
-            if isinstance(conv, dict):
-                result.append({
-                    "id": conv.get("id") or str(conv.get("_id", "")),
-                    "name": conv.get("name", "New Conversation"),
-                    "created_at": conv.get("created_at", ""),
-                    "last_active": conv.get("last_active", "")
-                })
-            else:
-                # Assuming it's an object with attributes
-                result.append({
-                    "id": getattr(conv, "id", None) or str(getattr(conv, "_id", "")),
-                    "name": getattr(conv, "name", "New Conversation"),
-                    "created_at": getattr(conv, "created_at", ""),
-                    "last_active": getattr(conv, "last_active", "")
-                })
-
-        response_data = {"data": result}
-        print(f"Returning conversations: {response_data}")
-        return response_data
+        print(f"Returning conversations: {conversations}")
+        return [ConversationDTO(
+            id=str(c.id),
+            user_id=c.user_id,
+            session_id=c.session_id,
+            name=c.name,
+            started_at=c.started_at,
+            last_active=c.last_active,
+            is_archived=c.is_archived,
+            flags=c.flags
+        ) for c in conversations]
 
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 #TODO add pending conversation request
-@ConversationsRouter.post("/chat/conversations/{user_id}")
+@ConversationsRouter.post("/chat/create-conversations/{user_id}")
 async def create_conversation(
     user_id: str,
     db: MongoDB = Depends(get_db),
@@ -69,10 +58,19 @@ async def create_conversation(
         if not user_id:
             raise HTTPException(status_code=400, detail="user_id is required")
 
-        # Now create the conversation with the valid user ID
-        #TODO return whole conversation object
-        conversation_id = await db.create_conversation(user_id)
-        return {"id": conversation_id}
+        conversation = await db.conversation.create(user_id)
+        print(f"Created conversation: {conversation}")
+        return [ConversationDTO(
+            id=str(conversation.id),
+            user_id=conversation.user_id,
+            session_id=conversation.session_id,
+            name=conversation.name,
+            started_at=conversation.started_at,
+            last_active=conversation.last_active,
+            is_archived=conversation.is_archived,
+            flags=conversation.flags
+        )]
+    
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
@@ -87,8 +85,11 @@ async def delete_conversation(
     try:
         if not conversation_id:
             raise HTTPException(status_code=400, detail="conversation_id is required")
-        await db.delete_conversation(conversation_id)
-        return {"message": "Conversation deleted"}
+        if await db.conversation.delete(conversation_id):
+            return {"message": "Conversation deleted"}
+        else:
+            raise HTTPException(status_code=500, detail="could not delete conversation")
+    
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from 'react';
-import { useCreateConversation } from './hooks';
+import { useCreateConversation } from '@/app/api/Queries/createConversation';
 
 
 export default function useConversationManagement(

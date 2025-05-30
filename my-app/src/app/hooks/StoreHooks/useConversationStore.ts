@@ -2,7 +2,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import {Conversation} from '../../types/conversation';
+import {Conversation} from '../../types/schemas';
 
 interface ConversationStore {
     conversations: Conversation[];

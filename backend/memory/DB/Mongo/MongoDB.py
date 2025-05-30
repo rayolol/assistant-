@@ -2,7 +2,9 @@ from motor.motor_asyncio import AsyncIOMotorClient as MongoClient
 from ._user import UserOps
 from ._conversation import ConversationOps
 from ._message import MessageOps
-from .init_beanie import init_beanie
+from ._Miscellaneous import PromptSettingsOps
+from .init_beanie import init_db
+
 
 
 class MongoDB:
@@ -10,6 +12,7 @@ class MongoDB:
         self.user = UserOps()
         self.conversation = ConversationOps()
         self.message = MessageOps()
-    
-    async def init(self):
-        await init_beanie()
+        self.prompt_settings = PromptSettingsOps()
+
+    async def initialize(self):
+        await init_db()

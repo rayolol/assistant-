@@ -1,25 +1,40 @@
 "use client";
 
 import { useUserStore } from "./StoreHooks/UserStore";
-import { useGetUserId } from "./hooks";
+import { useCreateUser } from "@/app/api/Queries/createUser";
+import { useGetUser } from "@/app/api/Queries/getUser";
 
 export function useAuth() {
     const { username, email, isAuthenticated, setIsAuthenticated, setUserId, setUsername, setEmail } = useUserStore();
-    const { mutateAsync: getUserId } = useGetUserId(username, email);
+    const { data: user, error: userError } = useGetUser(username ?? 'Guest', email ?? 'Guest@exampl.com');
+    const { mutateAsync: createUser, error: createUserError } = useCreateUser();
 
-    const login = async (username: string, email: string) => {
+    const login = async (username: string, email: string, newUser?: boolean | false) => {
         try {
-            // First set the username and email so they're available for the API call
             setUsername(username);
             setEmail(email);
             
-            // Then get the user ID
-            const response = await getUserId();
-            const userId = response?.userId;
+            if (newUser) {
+                const response = await createUser({ username, email });
+                const userId = response.id;
+                setUserId(userId);
+                setIsAuthenticated(true);
+                if (createUserError) {
+                    console.error("Error creating user:", createUserError);
+                    throw createUserError;
+                }
+                return;
+            } else {
+                const userId = user?.id;
+                setUserId(userId);
+                setIsAuthenticated(true);
+                if (userError) {
+                    console.error("Error fetching user:", userError);
+                    throw userError;
+                }
+                return;
+            }
             
-            // Set the user ID and authentication state
-            setUserId(userId);
-            setIsAuthenticated(true);
         } catch (error) {
             console.error("Error logging in:", error);
             throw error;

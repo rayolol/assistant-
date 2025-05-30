@@ -1,6 +1,6 @@
 "use client";
 
-import { UserPreferencesSchema } from "@/app/types/zodTypes/userPreferences";
+// import { UserPreferencesSchema } from "@/app/types/zodTypes/userPreferences";
 import { z } from "zod";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Textarea } from "@/components/ui/textarea";
 import { useUserStore } from "@/app/hooks/StoreHooks/UserStore";
-import { useSendForm } from "@/app/api/useSendForm";
+import { useSendForm } from "@/app/api/Queries/useSendForm";
 
 
 export const UserPreferencesForm = () => {

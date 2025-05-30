@@ -1,9 +1,10 @@
 "use client";
 import { useEffect, useState } from 'react';
-import { Message } from '../types/message';
+import { Message } from '../types/schemas';
 import { useUserStore } from './StoreHooks/UserStore';
 import { useMessageStore } from './StoreHooks/useMessageStore';
-import { useChathistory, useCreateConversation } from './hooks';
+import { useCreateConversation } from '@/app/api/Queries/createConversation';
+import { useChathistory } from '@/app/api/Queries/chatHistory';
 
 export function useMessageHandling() {
   const { userId, sessionId } = useUserStore();
@@ -24,12 +25,10 @@ export function useMessageHandling() {
   // Set fetched messages once they're loaded
   useEffect(() => {
     if (fetchedMessages.length > 0 && currentConversationId && !isStreaming) {
-      const timeout = setTimeout(() => {
-        setMessages(fetchedMessages);
-      }, 1000);
-      return () => clearTimeout(timeout);
+      console.log("Setting messages:", fetchedMessages);
+      setMessages(fetchedMessages);
     }
-  }, [fetchedMessages, currentConversationId, isStreaming, setMessages]);
+  }, [fetchedMessages, currentConversationId, isStreaming, setMessages, refetch]);
 
   const sendMessage = async (message: string) => {
     if (!userId || !sessionId) {
@@ -37,6 +36,8 @@ export function useMessageHandling() {
     }
 
     let actualConversationId = currentConversationId;
+
+    //TODO: make a sending pending request.
     
     if (currentConversationId === "pending") {
       try {
@@ -65,7 +66,6 @@ export function useMessageHandling() {
       role: 'user',
       content: message,
       timestamp: new Date().toISOString(),
-      ui_metadata: {},
       flags: {},
     };
     
@@ -104,6 +104,7 @@ export function useMessageHandling() {
         updateTimeout = setTimeout(() => {
           animationFrame = requestAnimationFrame(() => {
             setResponse(responseText);
+            console.log("Updated response state:", responseText);
           });
         }, 5); // Small delay to batch multiple rapid updates
       };
@@ -142,7 +143,6 @@ export function useMessageHandling() {
             role: 'assistant',
             content: finalResponse,
             timestamp: new Date().toISOString(),
-            ui_metadata: {},
             flags: {},
           };
           
@@ -179,7 +179,6 @@ export function useMessageHandling() {
             role: 'assistant',
             content: finalResponse,
             timestamp: new Date().toISOString(),
-            ui_metadata: {},
             flags: {},
           };
           

@@ -4,12 +4,13 @@ from pydantic import Field
 from typing import Dict, Any
 
 class ConversationOps:
-    async def create(self, user_id: str, name: str):
-        convo = Conversations(user_id=user_id, name=name)
+    async def create(self, user_id: str, name: str = "New Conversation"):
+        #TODO: add session id
+        convo = Conversations(user_id=user_id,session_id="123456790", name=name)
         await convo.insert()
         return convo
 
-    async def get_by_user(self, user_id: str):
+    async def get_by_user_id(self, user_id: str):
         return await Conversations.find(Conversations.user_id == user_id).to_list()
     
     async def delete(self, convo_id):

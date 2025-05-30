@@ -1,5 +1,5 @@
-from memory.redisCache import RedisCache
-from memory.MongoDB import MongoDB
+from memory.Cache.Redis.redisCache import RedisCache
+from memory.DB.Mongo.MongoDB import MongoDB
 from fastapi import Depends
 import asyncio
 from models.models import ChatSession
@@ -7,8 +7,8 @@ from models.models import ChatSession
 async def get_db():
     """Dependency to get the MongoDB instance"""
     db = MongoDB()
-    if not db.initialized:
-        await db.initialize()
+    if not getattr(db, 'initialized', False):
+                await db.initialize()
     return db
 
 async def get_cache():

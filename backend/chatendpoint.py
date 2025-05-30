@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
+from memory.DB.Mongo.MongoDB import MongoDB
 import requests
 from contextlib import asynccontextmanager
 import api.routes.User
@@ -20,6 +21,9 @@ session.headers.update({
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
+    print("Starting up...")
+    db = MongoDB()
+    await db.initialize()
     yield
     # Shutdown
     session.close()

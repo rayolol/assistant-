@@ -1,6 +1,6 @@
 "use client";
 import { useCallback } from 'react';
-import { Message } from '../types/message';
+import { Message } from '../types/schemas';
 import { baseURL } from '../api/api';
 import { useMessageStore } from './StoreHooks/useMessageStore';
 

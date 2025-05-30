@@ -1,6 +1,6 @@
 import { UserPreferencesSchema } from "@/app/types/zodTypes/userPreferences";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { updateUserInfo } from "./api";
+import { updateUserInfo } from "../api";
 import { z } from "zod";
 
 export const useSendForm = () => {

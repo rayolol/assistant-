@@ -4,13 +4,14 @@ from fastapi.responses import StreamingResponse
 import requests
 from models.models import ChatRequest
 from api.utils.Dependencies import get_db, get_cache
-from memory.MongoDB import MongoDB
-from memory.redisCache import RedisCache
+from memory.DB.Mongo.MongoDB import MongoDB
+from memory.Cache.Redis.redisCache import RedisCache
 import traceback
 from beanie import PydanticObjectId
 from datetime import datetime
 from core.agent_prompts import Streamed_agent_response
 from models.models import Mem0Context, ChatSession
+import asyncio
 
 
 
@@ -56,6 +57,8 @@ async def stream_chat(
                     if chunk:  # Only send non-empty chunks
                         print(f"Sending chunk: {chunk}")
                         yield chunk
+                        await asyncio.sleep(0.1)
+                        
             except Exception as e:
                 print(f"Error in event generator: {str(e)}")
                 yield f"data: Error: {str(e)}\n\n"
@@ -87,20 +90,11 @@ async def send_chat_history(conversation_id: str,session_id: str, user_id: str, 
     try:
         # Handle guest user
         print(f"Getting chat history for conversation_id={conversation_id}, user_id={user_id}")
-
-        # Create a session object
-        session = ChatSession(
-            conversation_id=PydanticObjectId(conversation_id),
-            session_id=session_id,
-            user_id=PydanticObjectId(user_id)
-        )
-
         # Get chat history from cache or database
-        history = await cache.get_chat_history(db, session)
+        history = await cache.get_chat_history(db, conversation_id, user_id)
 
         if not history or len(history) == 0:
             print("No history found in cache, trying database directly")
-            history = await cache.load_from_db(session, db)
 
         if not history:
             print("No history found in database either")
@@ -109,7 +103,7 @@ async def send_chat_history(conversation_id: str,session_id: str, user_id: str, 
         # Filter messages for this conversation
         conversation_history = []
         for msg in history:
-            if hasattr(msg, 'conversation_id') and str(msg.conversation_id) == str(conversation_id):
+            if str(msg.conversation_id) == str(conversation_id) and str(msg.user_id) == str(user_id):
                 conversation_history.append(msg)
 
         print(f"Returning {len(conversation_history)} messages for conversation {conversation_id}")

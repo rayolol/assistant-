@@ -1,6 +1,6 @@
 import redis.asyncio as r
 import json
-from models.models import ChatMessage
+from memory.DB.schemas import ChatMessage
 from typing import List, Optional
 from memory.DB.Mongo.MongoDB import MongoDB
 
@@ -15,7 +15,7 @@ class RedisCache:
         self.session_ttl = session_ttl
 
     def make_key(self, conversation_id: str, user_id: str) -> str:
-        return f"{user_id}:{conversation_id}"
+        return f"{user_id}"
 
     async def get_chat_history(self, db: MongoDB, conversation_id: str, user_id: str) -> Optional[List[ChatMessage]]:
         key = self.make_key(conversation_id, user_id)
@@ -39,9 +39,11 @@ class RedisCache:
             print(f"[RedisCache.get_chat_history] Error: {e}")
             return []
 
-    async def add_message(self, db: MongoDB, conversation_id: str, user_id: str, message: ChatMessage) -> None:
+    async def add_message(self, db: MongoDB, session_id: str, conversation_id: str, user_id: str, message: ChatMessage) -> None:
         key = self.make_key(conversation_id, user_id)
         history = await self.get_chat_history(db, conversation_id, user_id)
+        if history is None:
+            history = []
         history.append(message)
 
         await self.redis_client.setex(

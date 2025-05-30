@@ -2,20 +2,19 @@
 
 import React, { useEffect, useRef} from 'react';
 import { useUserStore } from '../../hooks/StoreHooks/UserStore';
-import { Message } from '../../types/message';
+import { Message } from '../../types/schemas';
 import Link from 'next/link';
 import TypingIndicator from './TypingIndicator';
 import ChatMessage from './ChatMessage';
 import { useMessageHandling } from '../../hooks/useMessageHandling';
 import { useMessageStore } from '@/app/hooks/StoreHooks/useMessageStore';
 import StreamingMessage from './StreamingMessage';
-import ChatInput from './ChatInput';
 
 const ChatWindow: React.FC = () => {
     const { userId, sessionId, username, isAuthenticated } = useUserStore();
     const { currentConversationId } = useMessageStore();
     const messagesEndRef = useRef<HTMLDivElement>(null);
-    const { response, isStreaming, sendMessage, messages, isLoading, error } = useMessageHandling();
+    const { response, isStreaming, messages, isLoading, error } = useMessageHandling();
 
 
     // Scroll to bottom when messages change or response updates

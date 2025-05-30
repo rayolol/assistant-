@@ -1,0 +1,37 @@
+import { z } from "zod";
+
+export const MessageSchema = z.object({
+    user_id: z.string(),
+    session_id: z.string(),
+    conversation_id: z.string(),
+    role: z.string(),
+    content: z.string(),
+    timestamp: z.string(),
+    flags: z.any(),
+})
+
+export type Message = z.infer<typeof MessageSchema>;
+
+
+export const ConversationSchema = z.object({
+    id: z.string(),
+    user_id: z.string(),
+    session_id: z.string(),
+    name: z.string(),
+    started_at: z.string(),
+    last_active: z.string(),
+    is_archived: z.boolean(),
+    flags: z.any(),
+})
+
+export type Conversation = z.infer<typeof ConversationSchema>;
+
+export const UserSchema = z.object({
+    id: z.string(), // Pydantic ObjectId serialized to string
+    username: z.string(),
+    email: z.string().email(),
+    created_at: z.string().datetime() // assuming ISO string from backend
+  });
+  
+  export type User = z.infer<typeof UserSchema>;
+  

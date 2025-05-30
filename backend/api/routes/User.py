@@ -1,8 +1,8 @@
 import fastapi
 from fastapi import Depends, HTTPException, Request
-from models.models import UserPreferences
-from memory.MongoDB import MongoDB
-from memory.redisCache import RedisCache
+from models.schemas import UserDTO
+from memory.DB.Mongo.MongoDB import MongoDB
+from memory.Cache.Redis.redisCache import RedisCache
 from api.utils.Dependencies import get_db, get_cache
 import traceback
 
@@ -11,7 +11,6 @@ UserRouter = fastapi.APIRouter()
 
 #TODO: change the input request 
 
-#TODO: return user info object
 
 @UserRouter.post("/users/get-user-id")
 async def get_user_info(
@@ -22,7 +21,6 @@ async def get_user_info(
     try:
         # Parse the request body
         body = await request.json()
-        print(body)
         username = body.get("username")
         email = body.get("email")
 
@@ -32,12 +30,18 @@ async def get_user_info(
             raise HTTPException(status_code=400, detail="Username or email is required")
 
         # Handle guest user
-        id = await db.search_user(username=username, email=email)
+        #TODO: add JWT for real auth
+        user = await db.user.get_user_by_username(username=username)
 
-        if not id:
+        if not user:
             raise HTTPException(status_code=404, detail="User not found")
         
-        return {"userId": str(id)}
+        return UserDTO(
+            id=str(user.id),
+            username=user.username,
+            email=user.email,
+            created_at=user.created_at
+        )
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
@@ -56,12 +60,14 @@ async def create_user(request: Request, db: MongoDB = Depends(get_db)):
     if not username and not email:
         raise HTTPException(status_code=400, detail="Username or email is required")
 
-    user = await db.search_user(username=username, email=email)
+    user = await db.user.create_user(username=username, email=email)
     if not user:
-        # Create the guest user if it doesn't exist
-        user_id = await db.create_user(username, email)
-        print("Created new guest user:", user_id)
+        raise HTTPException(status_code=400, detail="User not created")
     else:
-        user_id = str(user.id)
-        print("Using existing guest user:", user_id)
-    return user_id
+        print("Created new guest user:", user.id)
+    return UserDTO(
+        id=str(user.id),
+        username=user.username,
+        email=user.email,
+        created_at=user.created_at
+    )

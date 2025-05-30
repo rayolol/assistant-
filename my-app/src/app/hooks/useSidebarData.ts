@@ -1,33 +1,19 @@
 "use client";
 
-import { useQuery } from '@tanstack/react-query';
 import { useMessageStore } from './StoreHooks/useMessageStore';
-import { fetchConversations } from '../api/api';
 import { useUserStore } from './StoreHooks/UserStore';
 import { useEffect } from 'react';
-import { Conversation } from '../types/conversation';
+import { Conversation } from '../types/schemas';
+import { useConversation } from '@/app/api/Queries/getConversation';
 
 const useSidebarData = () => {
     const { userId } = useUserStore();
     const { currentConversationId, setCurrentConversationId } = useMessageStore();
 
-    const { data, isLoading, error, refetch } = useQuery({
-        queryKey: ['conversations', userId],
-        queryFn: async () => {
-            if (userId) {
-                console.log("Fetching conversations for user:", userId);
-                const result = await fetchConversations(userId);
-                console.log("Fetched conversations result:", result);
-                return result;
-            }
-            return { data: [] };
-        },
-        enabled: Boolean(userId),
-        refetchOnWindowFocus: false, // Disable automatic refetch on window focus
-    });
+    const { data, isLoading, error, refetch } =useConversation(userId);
 
     // Extract conversations from the response
-    const conversations: Conversation[] = data?.data || [];
+    const conversations: Conversation[] = data || [];
     
     // Function to start a new conversation (lazy initialization)
     const startNewConversation = () => {

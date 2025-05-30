@@ -1,20 +1,20 @@
-from memory.DB.schemas import ChatMessages
+from memory.DB.schemas import ChatMessage
 from typing import Dict, Any
 
 
 class MessageOps:
-    async def create(self, message: ChatMessages):
+    async def create(self, message: ChatMessage):
         await message.insert()
         return message
 
     async def get_by_conversation_id(self, convo_id: str):
-        return await ChatMessages.find(ChatMessages.conversation_id == convo_id).to_list()
+        return await ChatMessage.find(ChatMessage.conversation_id == convo_id).to_list()
     
     async def get_by_user_id(self, user_id: str):
-        return await ChatMessages.find(ChatMessages.user_id == user_id).to_list()
+        return await ChatMessage.find(ChatMessage.user_id == user_id).to_list()
     
     async def get_by_id(self, message_id: str):
-        return await ChatMessages.find_one(ChatMessages.id == message_id)
+        return await ChatMessage.find_one(ChatMessage.id == message_id)
     
     async def delete(self, message_id: str):
         message = await self.get_by_id(message_id)
@@ -33,5 +33,5 @@ class MessageOps:
         return None
     
     async def get_conversation_history(self, convo_id: str, user_id: str):
-        return await ChatMessages.find(ChatMessages.conversation_id == convo_id, ChatMessages.user_id == user_id).to_list()
+        return await ChatMessage.find(ChatMessage.conversation_id == convo_id, ChatMessage.user_id == user_id).to_list()
 

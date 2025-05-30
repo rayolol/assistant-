@@ -2,12 +2,14 @@
 import asyncio
 import sys
 import os
+from typing import Any
 from prompts.prompt_builder import build_full_prompt
 from agents import Runner, RunConfig, Agent
 from openai.types.responses import ResponseTextDeltaEvent
-from models.models import ChatMessage, Mem0Context
-from memory.redisCache import RedisCache
-from memory.MongoDB import MongoDB 
+from models.models import Mem0Context
+from memory.DB.schemas import ChatMessage
+from memory.Cache.Redis.redisCache import RedisCache
+from memory.DB.Mongo.MongoDB import MongoDB 
 from settings.settings import MEMORY_Config as memory_config, Model
 from mem0 import Memory
 from agentic.handoffs.agent import Agents
@@ -43,10 +45,7 @@ async def Streamed_agent_response(db: MongoDB, cache: RedisCache, context: Mem0C
         print(f"Starting Streamed_agent_response with input: {user_input}")
         agent = Agents()
         
-        history = await cache.get_chat_history(db, context.to_chat_session())
-        if not history:
-            history = await cache.load_from_db(context.to_chat_session(), db)
-
+        history = await cache.get_chat_history(db, context.conversation_id, context.user_id)
         # Find the last assistant message in this conversation
         last_assistant_message = None
         if history and len(history) > 0:
@@ -67,6 +66,8 @@ async def Streamed_agent_response(db: MongoDB, cache: RedisCache, context: Mem0C
 
         # Add the user message to the context
         user_message = ChatMessage(
+            user_id=context.user_id,
+            session_id=context.session_id,
             conversation_id=context.conversation_id,
             role="user",
             content=user_input,
@@ -75,7 +76,7 @@ async def Streamed_agent_response(db: MongoDB, cache: RedisCache, context: Mem0C
         memory = Memory.from_config(memory_config)
 
         # Add to Redis cache
-        await cache.add_message(db, context.to_chat_session(), user_message)
+        await cache.add_message(db, conversation_id=context.conversation_id , user_id=context.user_id, session_id=context.session_id, message= user_message)
 
         if context.current_agent == "tutor_agent":
             starting_agent = agent.tutor_agent()
@@ -137,13 +138,7 @@ async def Streamed_agent_response(db: MongoDB, cache: RedisCache, context: Mem0C
         async for event in result.stream_events():
             if event.type == "raw_response_event" and isinstance(event.data, ResponseTextDeltaEvent):
                 response_text += event.data.delta
-                yield json.dumps({"data": event.data.delta, "type": "raw_response_event"})
-            elif event.type == "agent_updated_stream_event":
-                yield json.dumps({"data": f"Switching to {event.new_agent.name}", "type": "agent_updated_stream_event"})
-                yield json.dumps({"event": event.new_agent.name, "type": "agent_updated_stream_event"})
-            elif event.type == "run_item_stream_event":
-                yield json.dumps({"data": f"<{event.item.type}>", "type": "run_item_stream_event"})
-                yield json.dumps({"event": event.item.type, "type": "run_item_stream_event"})
+                yield f"data: {event.data.delta}\n\n"
             
 
         print(f"Finished streaming, total response length: {len(response_text)}")
@@ -151,6 +146,8 @@ async def Streamed_agent_response(db: MongoDB, cache: RedisCache, context: Mem0C
 
         # Create the assistant's response
         assistant_message = ChatMessage(
+            user_id=context.user_id,
+            session_id=context.session_id,
             conversation_id=context.conversation_id,
             role="assistant",
             content=response_text,
@@ -159,7 +156,7 @@ async def Streamed_agent_response(db: MongoDB, cache: RedisCache, context: Mem0C
         print(f"Assistant: {context.current_agent}")
 
         # Add to Redis cache
-        await cache.add_message(db, context.to_chat_session(), assistant_message)
+        await cache.add_message(db, conversation_id=context.conversation_id , user_id=context.user_id, session_id=context.session_id, message= assistant_message)
 
         # Add both messages to the context's chat history
         context.chat_history.append(user_message)
@@ -174,3 +171,11 @@ async def Streamed_agent_response(db: MongoDB, cache: RedisCache, context: Mem0C
         import traceback
         traceback.print_exc()
         yield f"\nError: {error_msg}"
+
+
+def format_sse(data: Any, event: str = None):
+    msg = ""
+    if event:
+        msg += f"event: {event}\n"
+    msg += f"data: {json.dumps(data)}\n\n"
+    return msg

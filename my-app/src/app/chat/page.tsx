@@ -12,7 +12,7 @@ import { Settings } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useEffect, useState } from 'react';
-import { UserPreferencesForm } from './component/form';
+//import { UserPreferencesForm } from './component/form';
 
 const ChatPage = () => {
   const { isStreaming, sendMessage } = useMessageHandling();
@@ -86,7 +86,7 @@ const ChatPage = () => {
                   </div>
                   <hr></hr>
                   <div>
-                    <UserPreferencesForm />
+                    
                   </div>
                 </div>
               </DialogDescription>

@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from 'zustand';
-import { Message } from '../../types/message';
+import { Message } from '../../types/schemas';
 
 interface ChatStore {
     currentConversationId: string | null;
