@@ -35,12 +35,14 @@ class ChatMessageDTO(BaseModel):
    
 
 class PromptSettingsDTO(BaseModel):
-    id: str = Field(alias='_id')
+    id: str | None = None
     user_id: str
-    display_name: str
-    custom_prompt: str
-    occupation: str
-    interests: str
+    display_name: str | None = None
+    custom_prompt: str | None = None
+    occupation: str | None = None
+    interests: str | None = None
+    about_me: str | None = None
+    updated_at: str | None = None # ISO string format with milliseconds precision
 
     
   

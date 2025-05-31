@@ -5,7 +5,7 @@ from datetime import datetime
 
 class PromptSettingsOps:
     async def create(self, user_id: str, display_name: str, custom_prompt: str, occupation: str, interests: str, about_me: str):
-        prompt_settings = PromptSettings(user_id=user_id, display_name=display_name, custom_prompt=custom_prompt, occupation=occupation, interests=interests, about_me=about_me)
+        prompt_settings = PromptSettings(user_id=user_id, display_name=display_name, custom_prompt=custom_prompt, occupation=occupation, interests=interests, about_me=about_me, updated_at=datetime.now())
         await prompt_settings.insert()
         return prompt_settings
 

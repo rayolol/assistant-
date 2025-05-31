@@ -9,12 +9,12 @@ from api.utils.Dependencies import get_db, get_cache
 ConversationsRouter = fastapi.APIRouter()
 
 
-@ConversationsRouter.get("/chat/conversations/{user_id}")
+@ConversationsRouter.get("/chat/conversations/{user_id}", response_model=list[ConversationDTO])
 async def get_user_conversations(
     user_id: str,
     db: MongoDB = Depends(get_db),
     cache: RedisCache = Depends(get_cache)
-):
+)-> list[ConversationDTO]:
     """Endpoint to retrieve all conversations for a user"""
     try:
         if not user_id:
@@ -47,19 +47,22 @@ async def get_user_conversations(
         raise HTTPException(status_code=500, detail=str(e))
 
 #TODO add pending conversation request
-@ConversationsRouter.post("/chat/create-conversations/{user_id}")
+@ConversationsRouter.post("/chat/create-conversations/{user_id}", response_model=ConversationDTO)
 async def create_conversation(
+    request: ConversationDTO,
     user_id: str,
     db: MongoDB = Depends(get_db),
     cache: RedisCache = Depends(get_cache)
-):
+)-> ConversationDTO:
     """Endpoint to create a new conversation for a user"""
     try:
         if not user_id:
-            raise HTTPException(status_code=400, detail="user_id is required")
+            raise HTTPException(status_code=400, detail="user_id is required")            
 
         conversation = await db.conversation.create(user_id)
+
         print(f"Created conversation: {conversation}")
+
         return [ConversationDTO(
             id=str(conversation.id),
             user_id=conversation.user_id,

@@ -12,6 +12,7 @@ import { Settings } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useEffect, useState } from 'react';
+import { PromptSettingForm } from './component/form';
 //import { UserPreferencesForm } from './component/form';
 
 const ChatPage = () => {
@@ -86,7 +87,7 @@ const ChatPage = () => {
                   </div>
                   <hr></hr>
                   <div>
-                    
+                    <PromptSettingForm/>
                   </div>
                 </div>
               </DialogDescription>

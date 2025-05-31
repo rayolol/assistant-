@@ -1,12 +1,11 @@
-import { UserPreferencesSchema } from "@/app/types/zodTypes/userPreferences";
+import { Promptsettings } from "@/app/types/schemas";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { updateUserInfo } from "../api";
-import { z } from "zod";
+import { updatePromptSettings } from "../api";
 
 export const useSendForm = () => {
     const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: (userPreferences: z.infer<typeof UserPreferencesSchema>) => updateUserInfo(userPreferences),
+    return useMutation<Promptsettings, Error, Promptsettings>({
+        mutationFn: (promptSetting: Promptsettings ) => updatePromptSettings(promptSetting),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["userPreferences"] });
         },

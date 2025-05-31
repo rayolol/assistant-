@@ -1,7 +1,7 @@
 "use client";
 //import { UserPreferencesSchema } from '../types/zodTypes/userPreferences';
 import axios from 'axios';
-import { ConversationSchema, Message,MessageSchema, Conversation, User, UserSchema } from '../types/schemas';  
+import { ConversationSchema, Message,MessageSchema, Conversation, User, UserSchema, Promptsettings, PromptSettingsSchema } from '../types/schemas';  
 import { z } from "zod";
 
 export const baseURL = 'http://localhost:8001'
@@ -9,6 +9,30 @@ export const baseURL = 'http://localhost:8001'
 const instance = axios.create({
     baseURL: baseURL
 });
+
+export const fetchPromptSettings = async (user_id: string): Promise<Promptsettings> => {
+    try {
+        const response = await instance.get(`/users/get-prompt-settings/${user_id}`);
+        console.log("Raw API response:", response.data);
+        return PromptSettingsSchema.parse(response.data);
+    } catch (error) {
+        console.error("Error fetching prompt settings:", error);
+        throw error;
+    }
+}
+
+
+export const updatePromptSettings = async (promptSettings: Promptsettings): Promise<Promptsettings> => {
+    try {
+        const response = await instance.put(`/users/update-prompt-settings/${promptSettings.user_id}`, promptSettings);
+        console.log("Raw API response:", response.data);
+        return PromptSettingsSchema.parse(response.data);
+    } catch (error) {
+        console.error("Error updating prompt settings:", error);
+        throw error;
+    }
+}
+
 export const createUser = async (userInfo: {username: string, email: string}): Promise<User> => {
     try {
         const response = await instance.post('/users/create-user', userInfo);
@@ -93,15 +117,5 @@ export const deleteConversation = async (conversation_id: string) => {
         throw error;
     }
 }
-//TODO: fix the type error
-// export const updateUserInfo = async (userPreferences: z.infer<typeof UserPreferencesSchema>) => {
-//     try {
-//         const response = await instance.put(`/users/update-user-info/${userPreferences.user_id}`, userPreferences);
-//         return response.data;
-//     } catch (error) {
-//         console.error("Error updating user info:", error);
-//         throw error;
-//     }
-// }
 
 export default instance;

@@ -4,9 +4,10 @@ from datetime import datetime
 from pydantic import Field, field_validator, field_serializer
 from beanie import Link
 from pydantic import BaseModel
-from typing import Dict, Any, Union, List, Type
+from typing import Dict, Any, Union, List, Type, Optional
 from beanie import PydanticObjectId
 from bson import ObjectId
+
 
 
 #TODO: impement Prompt Settings
@@ -22,7 +23,7 @@ class DTOConverter:
 
 
 class Users(Document, DTOConverter):
-    id: PydanticObjectId = Field(alias= '_id')
+    id: Optional[PydanticObjectId] = Field(default_factory=PydanticObjectId, alias="_id")
     username: str
     email: str
 #    JWT: str
@@ -30,7 +31,7 @@ class Users(Document, DTOConverter):
 
 
 class Conversations(Document, DTOConverter):
-    id: PydanticObjectId= Field(..., alias= '_id')
+    id: Optional[PydanticObjectId]= Field(..., alias= '_id')
     user_id: Union[str, PydanticObjectId ,Link[Users]]
     session_id: str
     name: str = "new conversation"
@@ -39,6 +40,7 @@ class Conversations(Document, DTOConverter):
     is_archived: bool = False
     flags: Dict[str,Any] = Field(default_factory=dict)
 class ChatMessage(Document, DTOConverter):
+    id: Optional[PydanticObjectId]= Field(..., alias= '_id')
     user_id: Union[str, PydanticObjectId ,Link[Users]]
     conversation_id: Union[str, PydanticObjectId ,Link[Conversations]]
     session_id: str
@@ -51,10 +53,12 @@ class ChatMessage(Document, DTOConverter):
     #attachments: Any = None
 
 class PromptSettings(Document, DTOConverter):
+    
+    id: Optional[PydanticObjectId] = Field(default_factory=PydanticObjectId, alias="_id")
     user_id: Union[str, PydanticObjectId ,Link[Users]]
-    Display_name: str | None = None
+    display_name: str | None = None
     custom_prompt: str | None = None
-    opccupation: str | None = None
+    occupation: str | None = None
     interests: str | None = None
     about_me: str | None = None
     updated_at: datetime = Field(default_factory=datetime.now)

@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { coerce, z } from "zod";
 
 export const MessageSchema = z.object({
     user_id: z.string(),
@@ -34,4 +34,18 @@ export const UserSchema = z.object({
   });
   
   export type User = z.infer<typeof UserSchema>;
+
+
+export const PromptSettingsSchema = z.object({
+    id: z.string().optional(),
+    user_id: z.string(),
+    display_name: z.string(),
+    custom_prompt: z.string(),
+    occupation: z.string(),
+    interests: z.string(),
+    about_me: z.string(),
+    updated_at: z.coerce.date().optional()// assuming ISO string from backend
+  });
+  
+  export type Promptsettings = z.infer<typeof PromptSettingsSchema>;
   
