@@ -86,28 +86,20 @@ export function useMessageHandling() {
       eventSource.onopen = (event) => {
         console.log("SSE connection opened:", event);
       };
-      let responseText = '';
-      let updateTimeout: NodeJS.Timeout | null = null;
       let animationFrame: number | null = null;
-      
+      let responseText = '';
+    
       eventSource.onmessage = (event) => {
         console.log("Received SSE message:", event.data);
         responseText += event.data;
-       
-        
-        // Clear any pending update
-        if (updateTimeout) {
-          clearTimeout(updateTimeout);
+        if (animationFrame) {
+          cancelAnimationFrame(animationFrame);
         }
-        
-        // Batch updates using setTimeout
-        updateTimeout = setTimeout(() => {
-          animationFrame = requestAnimationFrame(() => {
-            setResponse(responseText);
-            console.log("Updated response state:", responseText);
-          });
-        }, 5); // Small delay to batch multiple rapid updates
-      };
+
+        animationFrame = requestAnimationFrame(() => {
+          setResponse(responseText);
+        });
+      }
 
       eventSource.onerror = (error) => {
         console.error('EventSource error:', {
@@ -115,24 +107,13 @@ export function useMessageHandling() {
           url: eventSource.url,
           error
         });
-        
-        // Clear any pending update
-        if (updateTimeout) {
-          clearTimeout(updateTimeout);
-        }
-        
-        // Close the connection
+    
         eventSource.close();
         
-        // Get the final response before clearing
-        const finalResponse = responseText;
-        if (animationFrame) {
-          cancelAnimationFrame(animationFrame);
-        }
-        
-        // Update streaming state
+    
         setIsStreaming(false);
         setStreamingConversationId(null);
+        const finalResponse = responseText;
         
         // Add the complete response as a message if we have any content
         if (finalResponse && finalResponse.trim()) {
@@ -156,14 +137,7 @@ export function useMessageHandling() {
 
       // Add close event handler
       eventSource.addEventListener('close', () => {
-        // Clear any pending update
-        if (updateTimeout) {
-          clearTimeout(updateTimeout);
-        }
-        if (animationFrame) {
-          cancelAnimationFrame(animationFrame);
-        }
-        // Get the final response
+       
         const finalResponse = responseText;
         
         // Update streaming state
@@ -191,14 +165,7 @@ export function useMessageHandling() {
       });
       
       return () => {
-        // Clear any pending update
-        if (updateTimeout) {
-          clearTimeout(updateTimeout);
-        }
-        if (animationFrame) {
-          cancelAnimationFrame(animationFrame);
-        }
-        
+       
         if (eventSource.readyState !== EventSource.CLOSED) {
           eventSource.close();
         }

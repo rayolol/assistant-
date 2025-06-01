@@ -40,7 +40,7 @@ class Conversations(Document, DTOConverter):
     is_archived: bool = False
     flags: Dict[str,Any] = Field(default_factory=dict)
 class ChatMessage(Document, DTOConverter):
-    id: Optional[PydanticObjectId]= Field(..., alias= '_id')
+    id: Optional[PydanticObjectId]= Field(default_factory=PydanticObjectId, alias= '_id')
     user_id: Union[str, PydanticObjectId ,Link[Users]]
     conversation_id: Union[str, PydanticObjectId ,Link[Conversations]]
     session_id: str

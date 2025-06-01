@@ -77,13 +77,15 @@ async def Streamed_agent_response(db: MongoDB, cache: RedisCache, context: Mem0C
 
         # Add to Redis cache
         await cache.add_message(db, conversation_id=context.conversation_id , user_id=context.user_id, session_id=context.session_id, message= user_message)
+        userdescription = await db.prompt_settings.get_by_user_id(context.user_id)
+
 
         if context.current_agent == "tutor_agent":
-            starting_agent = agent.tutor_agent()
+            starting_agent = agent.tutor_agent(instructions=userdescription.__str__())
         elif context.current_agent == "coding_agent":
-            starting_agent = agent.coding_agent()
+            starting_agent = agent.coding_agent(instructions=userdescription.__str__())
         else:
-            starting_agent = agent.Main_agent()
+            starting_agent = agent.Main_agent(instructions=userdescription.__str__())
 
         memories = memory.search(
             query=user_input,

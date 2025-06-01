@@ -7,13 +7,9 @@ import remarkBreaks from 'remark-breaks';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
-import { Message } from '../../types/schemas';
+import { Message } from '../../app/types/schemas';
 import type { Components } from 'react-markdown';
 
-interface StreamingMessageProps {
-  message: Message;
-  streamContent: string;
-}
 
 interface CodeProps {
   inline?: boolean;
@@ -21,8 +17,8 @@ interface CodeProps {
   children: React.ReactNode;
 }
 
-const StreamingMessage = memo(({ message, streamContent }: StreamingMessageProps) => {
-  const content = streamContent || message.content;
+const StreamingMessage = memo(({ streamContent }: { streamContent: string }) => {
+  const content = streamContent;
 
   const components: Components = {
     p: ({ children, ...props }) => (

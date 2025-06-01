@@ -6,7 +6,7 @@ import remarkBreaks from 'remark-breaks';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
-import { Message } from '../../types/schemas';
+import { Message } from '../../app/types/schemas';
 import { memo } from 'react';
 
 const ChatMessage = memo(({ message }: { message: Message }) => {
@@ -73,27 +73,27 @@ const ChatMessage = memo(({ message }: { message: Message }) => {
                                 <h3 className="text-lg font-bold mb-2 mt-4">{children}</h3>
                             ),
                             blockquote: ({ children }) => (
-                                <blockquote className="border-l-4 border-gray-500 pl-4 py-1 my-4 bg-gray-800/30 rounded-r">{children}</blockquote>
+                                <blockquote className="border-l-4 border-accent-foreground pl-4 py-1 my-4 bg-accent rounded-r">{children}</blockquote>
                             ),
                             table: ({ children }) => (
                                 <div className="overflow-x-auto my-4">
-                                    <table className="min-w-full border-collapse border border-gray-700">{children}</table>
+                                    <table className="min-w-full border-collapse border border-accent-foreground">{children}</table>
                                 </div>
                             ),
                             thead: ({ children }) => (
                                 <thead className="bg-gray-800">{children}</thead>
                             ),
                             tbody: ({ children }) => (
-                                <tbody className="divide-y divide-gray-700">{children}</tbody>
+                                <tbody className="divide-y divide-accent-foreground">{children}</tbody>
                             ),
                             tr: ({ children }) => (
                                 <tr className="hover:bg-gray-800/50">{children}</tr>
                             ),
                             th: ({ children }) => (
-                                <th className="px-4 py-2 text-left font-medium text-gray-300 border border-gray-700">{children}</th>
+                                <th className="px-4 py-2 text-left font-medium text-accent-foreground border border-">{children}</th>
                             ),
                             td: ({ children }) => (
-                                <td className="px-4 py-2 border border-gray-700">{children}</td>
+                                <td className="px-4 py-2 border border-accent">{children}</td>
                             ),
                         }}
                     >

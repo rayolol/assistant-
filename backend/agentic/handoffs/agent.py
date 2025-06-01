@@ -119,10 +119,10 @@ class Agents:
         ctx.context.current_agent = "tutor_agent"
         return input_data.content if input_data else "{}"
 
-    def coding_agent(self) -> Agent[Mem0Context]:
+    def coding_agent(self, instructions: str | None = None) -> Agent[Mem0Context]:
         """Return the coding agent with handoffs"""
         return Agent[Mem0Context](
-            instructions=P.CODING_AGENT_INSTRUCTIONS,
+            instructions=P.CODING_AGENT_INSTRUCTIONS + (f"\nuser description: {instructions}") if instructions else P.CODING_AGENT_INSTRUCTIONS,
             name="Coding Assistant",
             model=Model,
             tools=self.memory_tools,
@@ -130,22 +130,22 @@ class Agents:
             model_settings=self.settings
         )
 
-    def Main_agent(self) -> Agent[Mem0Context]:
+    def Main_agent(self, instructions: str | None = None) -> Agent[Mem0Context]:
         """Return the main memory agent with handoffs"""
         return Agent[Mem0Context](
             name="Main Memory Assistant",
-            instructions=P.AGENT_DEFAULT_PROMPT,
+            instructions=P.AGENT_DEFAULT_PROMPT + (f"\nuser description: {instructions}") if instructions else P.AGENT_DEFAULT_PROMPT,
             model=Model,
             tools=self.memory_tools,
             handoffs=[self.coding_handoff, self.tutor_handoff],
             model_settings=self.settings
         )
 
-    def tutor_agent(self) -> Agent[Mem0Context]:
+    def tutor_agent(self, instructions: str | None = None) -> Agent[Mem0Context]:
         """Return the tutor agent with handoffs"""
         return Agent[Mem0Context](
             name="Tutor Agent",
-            instructions=P.TUTOR_AGENT_INSTRUCTIONS,
+            instructions=P.TUTOR_AGENT_INSTRUCTIONS + (f"\nuser description: {instructions}") if instructions else P.TUTOR_AGENT_INSTRUCTIONS,
             model=Model,
             tools=self.memory_tools,
             handoffs=[self.back_to_main, self.coding_handoff],

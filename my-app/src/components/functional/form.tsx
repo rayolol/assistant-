@@ -122,8 +122,8 @@ export const PromptSettingForm = () => {
 
 
                 <AlertDialog>
-                    <AlertDialogTrigger>
-                        send
+                    <AlertDialogTrigger asChild>
+                        <Button>Submit</Button>
                     </AlertDialogTrigger>
                     <AlertDialogOverlay>
                     <AlertDialogContent>
@@ -141,7 +141,6 @@ export const PromptSettingForm = () => {
                 </AlertDialogOverlay>
 
                 </AlertDialog>
-                {/*TODO: add warn before submitting*/}
                 {isError && <p className="text-red-500 p-4 border bg-red-200 border-red-500 rounded-md">Error: {error.message}</p>}
                 {isPending && <p className="text-blue-500 p-4 border bg-blue-200 border-blue-500 rounded-md">Submitting...</p>}
 

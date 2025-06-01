@@ -1,0 +1,24 @@
+"use client";
+import { useMessageHandling } from '@/app/hooks/useMessageHandling';
+import React, { useRef } from 'react';
+import { ChatBody }from './chatBody';
+import { useAutoScroll } from '@/app/hooks/useAutoScroll';
+import { useUserStore } from '@/app/hooks/StoreHooks/UserStore';
+import { ErrorCard } from '@/components/utils/ErrorCard';
+
+export const ChatWindow = () => {
+  const { messages, isStreaming, response, error } = useMessageHandling();
+  const { username } = useUserStore();
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useAutoScroll(messagesEndRef, isStreaming);
+
+  return (  
+    <div className="flex flex-col h-full">
+      <ChatBody messages={messages ?? []} isStreaming={isStreaming} response={response} username = {username ?? ""} />
+      {error && <ErrorCard error={error}/>}
+      <div ref={messagesEndRef} />
+    </div>
+  );
+};

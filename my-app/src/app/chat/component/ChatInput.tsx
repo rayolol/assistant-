@@ -1,14 +1,14 @@
+"use client";
 
 import React, { useState, useRef, useEffect } from 'react';
+import { useMessageHandling } from '@/app/hooks/useMessageHandling';
 
 
-const ChatInput: React.FC<{
-    isStreaming: boolean,
-    sendMessage: (arg0: string) => void}
-    > = ({isStreaming, sendMessage}) => {
+const ChatInput = () => {
         
         const [input, setInput] = useState<string>('');
         const textareaRef = useRef<HTMLTextAreaElement>(null);
+        const { isStreaming, sendMessage } = useMessageHandling();
 
         const handleSubmit = (e: React.FormEvent) => {
             e.preventDefault();
@@ -27,7 +27,7 @@ const ChatInput: React.FC<{
 
     return (
         <div className="max-w-4xl mx-auto w-full min-w-[500px]">
-            <div className="text-black dark:text-white border  rounded-[50px] focus:ring-2 m-4  border-gray-300 bg-gray-200 dark:bg-neutral-700 p-4 ">
+            <div className="text-black dark:text-white border rounded-4xl bg-gray-200 dark:bg-neutral-700 p-4 ">
                 <form onSubmit={handleSubmit} className= "relative">
                     <textarea
                                 ref={textareaRef}
@@ -37,7 +37,7 @@ const ChatInput: React.FC<{
                                 placeholder="Type your message..."
                                 disabled={isStreaming}
                                 rows={1}
-                                className="w-full border-none resize-none text-white rounded-full px-4 py-2 focus:outline-none min-h-[56px] max-h-[200px]  focus:border-transparent"
+                                className="w-full border-none resize-none focus:border-transparent text-white rounded-full px-4 py-2 min-h-[56px] max-h-[200px]"
                             />
                         <div className="flex items-center justify-end space-x-2">
                             
