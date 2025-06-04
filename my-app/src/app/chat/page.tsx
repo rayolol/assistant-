@@ -1,5 +1,4 @@
 "use client";
-import { useTheme } from 'next-themes';
 import { ChatWindow } from '@/components/chat/chatWindow';
 import { ContentContainer } from '@/components/layout/container';
 import { SidebarContainer } from '@/components/sidebar/SidebarContainer';

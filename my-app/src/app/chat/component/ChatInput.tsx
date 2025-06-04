@@ -27,7 +27,7 @@ const ChatInput = () => {
 
     return (
         <div className="max-w-4xl mx-auto w-full min-w-[500px]">
-            <div className="text-black dark:text-white border rounded-4xl bg-gray-200 dark:bg-neutral-700 p-4 ">
+            <div className="text-foreground h-[100px] border-border rounded-[2rem] bg-secondary p-2">
                 <form onSubmit={handleSubmit} className= "relative">
                     <textarea
                                 ref={textareaRef}
@@ -37,14 +37,18 @@ const ChatInput = () => {
                                 placeholder="Type your message..."
                                 disabled={isStreaming}
                                 rows={1}
-                                className="w-full border-none resize-none focus:border-transparent text-white rounded-full px-4 py-2 min-h-[56px] max-h-[200px]"
+                                className="w-full border-none resize-none focus:border-none text-foreground rounded-full m-2 min-h-[20px] max-h-[200px]"
                             />
-                        <div className="flex items-center justify-end space-x-2">
+                        <div className="flex items-center justify-between space-x-2">
+                            <div className="flex flex-row space-x-2">
+                                <button type="button" className='py-1 px-2 m-1 rounded-full bg-sidebar text-accent-foreground'>tool 1</button>
+                                <button type="button" className='py-1 px-2 m-1'>tool 2</button>
+                            </div>
                             
                             <button
                                 onClick={handleSubmit}
                                 disabled={!input.trim() || isStreaming}
-                                className={`rounded-full p-2 ${!input.trim() || isStreaming
+                                className={`rounded-full p-1 m-1 ${!input.trim() || isStreaming
                                     ? 'bg-gray-300 cursor-not-allowed'
                                     : 'bg-blue-500 hover:bg-blue-600 text-white'}`}
                             >

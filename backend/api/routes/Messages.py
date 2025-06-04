@@ -3,10 +3,11 @@ from fastapi import Depends, HTTPException
 from fastapi.responses import StreamingResponse
 import requests
 from models.models import ChatRequest
-from api.utils.Dependencies import get_db, get_cache
+from api.utils.Dependencies import get_db, get_cache, get_AI_Memory
 from memory.DB.Mongo.MongoDB import MongoDB
 from memory.Cache.Redis.redisCache import RedisCache
 import traceback
+from mem0 import Memory
 from beanie import PydanticObjectId
 from datetime import datetime
 from core.agent_prompts import Streamed_agent_response
@@ -36,7 +37,8 @@ async def stream_chat(
     conversation_id: str,
     message: str,
     db: MongoDB = Depends(get_db),
-    cache: RedisCache = Depends(get_cache)
+    cache: RedisCache = Depends(get_cache),
+    memory: Memory = Depends(get_AI_Memory)
 ) -> StreamingResponse:
     try:
         print(f"Starting SSE stream for user {user_id}, session {session_id}, conversation {conversation_id}")
@@ -49,6 +51,7 @@ async def stream_chat(
         async def event_generator():
             try:
                 async for chunk in Streamed_agent_response(
+                    memory=memory,
                     db=db,
                     cache=cache,
                     context=context,
@@ -57,7 +60,7 @@ async def stream_chat(
                     if chunk:  # Only send non-empty chunks
                         print(f"Sending chunk: {chunk}")
                         yield chunk
-                        await asyncio.sleep(0.1)
+                        await asyncio.sleep(0.08)
                         
             except Exception as e:
                 print(f"Error in event generator: {str(e)}")

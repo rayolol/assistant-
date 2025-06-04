@@ -7,7 +7,7 @@ import { useUserStore } from '@/app/hooks/StoreHooks/UserStore';
 import { ErrorCard } from '@/components/utils/ErrorCard';
 
 export const ChatWindow = () => {
-  const { messages, isStreaming, response, error } = useMessageHandling();
+  const { messages, isStreaming, response, error} = useMessageHandling();
   const { username } = useUserStore();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -15,8 +15,8 @@ export const ChatWindow = () => {
   useAutoScroll(messagesEndRef, isStreaming);
 
   return (  
-    <div className="flex flex-col h-full">
-      <ChatBody messages={messages ?? []} isStreaming={isStreaming} response={response} username = {username ?? ""} />
+    <div className="flex flex-col h-full w-4xl mx-auto">
+      <ChatBody messages={messages ?? []} isStreaming={isStreaming} response={response} username = {username ?? ""}/>
       {error && <ErrorCard error={error}/>}
       <div ref={messagesEndRef} />
     </div>

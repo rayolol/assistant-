@@ -27,7 +27,7 @@ class PlannerOutput(BaseModel):
     conversation_name: Optional[str] | None = None
 
 
-async def Streamed_agent_response(db: MongoDB, cache: RedisCache, context: Mem0Context, user_input: str, hooks: dict[str, Callable] | None = None):
+async def Streamed_agent_response(memory: Memory, db: MongoDB, cache: RedisCache, context: Mem0Context, user_input: str, hooks: dict[str, Callable] | None = None):
     """
     Process a user message through the agent and return the response
 
@@ -73,8 +73,6 @@ async def Streamed_agent_response(db: MongoDB, cache: RedisCache, context: Mem0C
             content=user_input,
             metadata={"current_agent": context.current_agent}  # Store current agent in user message too
         )
-        memory = Memory.from_config(memory_config)
-
         # Add to Redis cache
         await cache.add_message(db, conversation_id=context.conversation_id , user_id=context.user_id, session_id=context.session_id, message= user_message)
         userdescription = await db.prompt_settings.get_by_user_id(context.user_id)
@@ -101,6 +99,8 @@ async def Streamed_agent_response(db: MongoDB, cache: RedisCache, context: Mem0C
                 workflow_name="Memory Assistant Workflow",
                 trace_metadata={"user_id": context.user_id}
             )
+        
+        yield f"data: {json.dumps({"event": "planning"})}\n\n"
         planner_prompt = await Runner.run(
             starting_agent=Agent[Mem0Context](
                 name="Planner Agent",
@@ -119,10 +119,11 @@ async def Streamed_agent_response(db: MongoDB, cache: RedisCache, context: Mem0C
             run_config=run_config,
             hooks=hooks if hooks else None
         )
+        yield f"data: {json.dumps({"event": "done planning"})}\n\n"
+
 
 
         # Yield a test message to verify streaming is working
-        yield "Starting to process your message...\n"
         print(f"Planner prompt: {planner_prompt.__str__()}")
 
         # Run the memory agent with the context
@@ -139,8 +140,9 @@ async def Streamed_agent_response(db: MongoDB, cache: RedisCache, context: Mem0C
         response_text = ""
         async for event in result.stream_events():
             if event.type == "raw_response_event" and isinstance(event.data, ResponseTextDeltaEvent):
-                response_text += event.data.delta
-                yield f"data: {event.data.delta}\n\n"
+                chunk = event.data.delta  # may contain "\n"
+                response_text += chunk     # if you still need to build the full response
+                yield f"data: {json.dumps({"chunk": chunk})}\n\n"
             
 
         print(f"Finished streaming, total response length: {len(response_text)}")
@@ -156,6 +158,8 @@ async def Streamed_agent_response(db: MongoDB, cache: RedisCache, context: Mem0C
             metadata={"current_agent": context.current_agent}  # Store current agent in metadata
         )
         print(f"Assistant: {context.current_agent}")
+
+        print(f"Assistant message: {assistant_message.__str__()}")
 
         # Add to Redis cache
         await cache.add_message(db, conversation_id=context.conversation_id , user_id=context.user_id, session_id=context.session_id, message= assistant_message)

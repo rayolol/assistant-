@@ -16,12 +16,10 @@ export const AssistantMessage = memo(({ message }: { message: string }) => {
 AssistantMessage.displayName = 'AssistantMessage';
 
 export const StreamingAssistantMessage = memo(({ streamContent }: { streamContent: string }) => {
-    const rendered = useMemo(() => renderMarkdown(streamContent), [streamContent]);
-
     return (
-        <div className="flex justify-start">
-            <div className="p-4 prose dark:prose-invert whitespace-pre-wrap">
-                <div dangerouslySetInnerHTML={{ __html: rendered }} />
+        <div className="flex justify-start p-4">
+            <div className='p4 whitespace-pre-wrap'>
+                <MarkdownRenderer content={streamContent} />
             </div>
         </div>
     );

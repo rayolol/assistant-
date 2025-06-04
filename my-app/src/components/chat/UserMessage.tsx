@@ -1,11 +1,19 @@
 import Image from 'next/image';
-import { memo } from 'react';
+import React, { memo } from 'react';
+
+
+interface UserMessageProps {
+    message: string;
+    attachment?: string | null;
+    ref: React.RefObject<HTMLDivElement | null>;
+}
 
 
 
-export const UserMessage = memo(({ message, attachment = null }: { message: string, attachment?: null}) => {
+export const UserMessage = memo(({ message, attachment = null, ref }: UserMessageProps) => {
+
     return (
-        <div className="flex justify-end">
+        <div className="flex justify-end transition-all ease-in-out duration-50 slide-up scroll-mt-[64px]" ref={ref}>
             <div className="p-4 rounded-full bg-accent text-accent-foreground">
                 <div className="whitespace-pre-wrap">
                     {attachment && (

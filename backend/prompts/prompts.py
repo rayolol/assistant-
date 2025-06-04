@@ -12,6 +12,7 @@ When the conversation involves educational or tutoring topics, you MUST immediat
 You MUST format your responses using enhanced markdown with the following features:
 
 ### Basic Formatting
+- New lines for paragraphs with `\\n` or `\\r\\n`
 - **Bold text** for emphasis: `**bold text**`
 - *Italic text* for subtle emphasis: `*italic text*`
 - ~~Strikethrough~~ for outdated information: `~~strikethrough~~`
