@@ -7,7 +7,7 @@ import pydantic
 
 
 class UserDTO(BaseModel):
-    id: str = Field(alias='_id')
+    id: str 
     username: str
     email: str
     created_at: datetime

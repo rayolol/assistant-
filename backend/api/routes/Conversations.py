@@ -1,20 +1,21 @@
 import fastapi
 from models.schemas import ConversationDTO
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Request
 from memory.DB.Mongo.MongoDB import MongoDB
 from memory.Cache.Redis.redisCache import RedisCache
 import traceback
 from api.utils.Dependencies import get_db, get_cache
+from typing import List
 
 ConversationsRouter = fastapi.APIRouter()
 
 
-@ConversationsRouter.get("/chat/conversations/{user_id}", response_model=list[ConversationDTO])
+@ConversationsRouter.get("/chat/conversations/{user_id}", response_model=List[ConversationDTO])
 async def get_user_conversations(
     user_id: str,
     db: MongoDB = Depends(get_db),
     cache: RedisCache = Depends(get_cache)
-)-> list[ConversationDTO]:
+) -> List[ConversationDTO]:
     """Endpoint to retrieve all conversations for a user"""
     try:
         if not user_id:
@@ -49,7 +50,7 @@ async def get_user_conversations(
 #TODO add pending conversation request
 @ConversationsRouter.post("/chat/create-conversations/{user_id}", response_model=ConversationDTO)
 async def create_conversation(
-    request: ConversationDTO,
+    request: Request,
     user_id: str,
     db: MongoDB = Depends(get_db),
     cache: RedisCache = Depends(get_cache)
@@ -63,7 +64,7 @@ async def create_conversation(
 
         print(f"Created conversation: {conversation}")
 
-        return [ConversationDTO(
+        return ConversationDTO(
             id=str(conversation.id),
             user_id=conversation.user_id,
             session_id=conversation.session_id,
@@ -72,7 +73,7 @@ async def create_conversation(
             last_active=conversation.last_active,
             is_archived=conversation.is_archived,
             flags=conversation.flags
-        )]
+        )
     
     except Exception as e:
         traceback.print_exc()
@@ -98,7 +99,7 @@ async def delete_conversation(
         raise HTTPException(status_code=500, detail=str(e))
     
 
-#TODO Update conversation name
+#TODO Update conversation wiht optional name update 
 
 #TODO Get conversation by id
 

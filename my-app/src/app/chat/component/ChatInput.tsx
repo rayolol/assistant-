@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useMessageHandling } from '@/app/hooks/useMessageHandling';
+import { PlusIcon } from 'lucide-react';
 
 
 const ChatInput = () => {
@@ -13,7 +14,7 @@ const ChatInput = () => {
         const handleSubmit = (e: React.FormEvent) => {
             e.preventDefault();
             if (input.trim()) {
-                sendMessage(input);
+                sendMessage(input.trim());
                 setInput('');
             }
         };
@@ -27,7 +28,7 @@ const ChatInput = () => {
 
     return (
         <div className="max-w-4xl mx-auto w-full min-w-[500px]">
-            <div className="text-foreground h-[100px] border-border rounded-[2rem] bg-secondary p-2">
+            <div className="text-foreground h-[100px] border-border rounded-[2rem] bg-muted p-2">
                 <form onSubmit={handleSubmit} className= "relative">
                     <textarea
                                 ref={textareaRef}
@@ -37,10 +38,11 @@ const ChatInput = () => {
                                 placeholder="Type your message..."
                                 disabled={isStreaming}
                                 rows={1}
-                                className="w-full border-none resize-none focus:border-none text-foreground rounded-full m-2 min-h-[20px] max-h-[200px]"
+                                className="w-full border-none resize-none focus:outline-none focus:border-none text-foreground m-2 min-h-[20px] max-h-[200px]"
                             />
                         <div className="flex items-center justify-between space-x-2">
                             <div className="flex flex-row space-x-2">
+                                <button><PlusIcon/></button>
                                 <button type="button" className='py-1 px-2 m-1 rounded-full bg-sidebar text-accent-foreground'>tool 1</button>
                                 <button type="button" className='py-1 px-2 m-1'>tool 2</button>
                             </div>

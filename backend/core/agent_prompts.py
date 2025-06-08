@@ -2,6 +2,7 @@
 import asyncio
 import sys
 import os
+import time
 from typing import Any
 from prompts.prompt_builder import build_full_prompt
 from agents import Runner, RunConfig, Agent
@@ -15,6 +16,7 @@ from mem0 import Memory
 from agentic.handoffs.agent import Agents
 from typing import Callable, Literal, Optional
 from pydantic import BaseModel
+from prompts.prompt_builder import format_prompt
 import json
 
 
@@ -43,9 +45,14 @@ async def Streamed_agent_response(memory: Memory, db: MongoDB, cache: RedisCache
     """
     try:
         print(f"Starting Streamed_agent_response with input: {user_input}")
-        agent = Agents()
-        
+        start = time.monotonic()
+        print(f"before creating agents: ;{time.monotonic() - start}")
+        agent = Agents(memory)
+        print(f"after creating agents: ;{time.monotonic() - start}")
+        print(f"before get_chat_history: ;{time.monotonic() - start}")
         history = await cache.get_chat_history(db, context.conversation_id, context.user_id)
+        print(f"after get_chat_history: ;{time.monotonic() - start}")
+
         # Find the last assistant message in this conversation
         last_assistant_message = None
         if history and len(history) > 0:
@@ -55,6 +62,8 @@ async def Streamed_agent_response(memory: Memory, db: MongoDB, cache: RedisCache
                     last_assistant_message = msg
                     break
 
+        print(f"after finding last assistant message: ;{time.monotonic() - start}")
+
         # Restore agent state from the last assistant message in this conversation
         if last_assistant_message and hasattr(last_assistant_message, 'metadata') and 'current_agent' in last_assistant_message.metadata:
             context.current_agent = last_assistant_message.metadata['current_agent']
@@ -63,6 +72,9 @@ async def Streamed_agent_response(memory: Memory, db: MongoDB, cache: RedisCache
             # Only reset to main agent if this is a completely new conversation
             context.current_agent = "main_agent"
             print(f"Starting new conversation {context.conversation_id} with main agent")
+
+
+        print(f"after restoring agent state: ;{time.monotonic() - start}")
 
         # Add the user message to the context
         user_message = ChatMessage(
@@ -75,8 +87,10 @@ async def Streamed_agent_response(memory: Memory, db: MongoDB, cache: RedisCache
         )
         # Add to Redis cache
         await cache.add_message(db, conversation_id=context.conversation_id , user_id=context.user_id, session_id=context.session_id, message= user_message)
+        print(f"after adding user message to cache: ;{time.monotonic() - start}")
         userdescription = await db.prompt_settings.get_by_user_id(context.user_id)
 
+        print(f"after getting user description: ;{time.monotonic() - start}")
 
         if context.current_agent == "tutor_agent":
             starting_agent = agent.tutor_agent(instructions=userdescription.__str__())
@@ -85,7 +99,9 @@ async def Streamed_agent_response(memory: Memory, db: MongoDB, cache: RedisCache
         else:
             starting_agent = agent.Main_agent(instructions=userdescription.__str__())
 
-        memories = memory.search(
+        print(f"after creating starting agent: ;{time.monotonic() - start}")
+        memories = asyncio.to_thread(
+            memory.search,
             query=user_input,
             user_id=context.user_id,
             agent_id=context.current_agent,
@@ -93,12 +109,16 @@ async def Streamed_agent_response(memory: Memory, db: MongoDB, cache: RedisCache
             limit=10
         )
 
-        full_prompt = build_full_prompt(history, memories,context.conversation_id, user_input)
-        print(f"Full prompt built: {full_prompt}")
+        print(f"after getting memories: ;{time.monotonic() - start}")
+        full_prompt = build_full_prompt(history, memories,context.conversation_id, user_input, userdescription.__str__())
+        formatted_prompt = format_prompt(full_prompt)
+        print(f"Full prompt built: {full_prompt.__str__()}")
         run_config = RunConfig(
                 workflow_name="Memory Assistant Workflow",
                 trace_metadata={"user_id": context.user_id}
             )
+        
+        print(f"after creating run config: ;{time.monotonic() - start}")
         
         yield f"data: {json.dumps({"event": "planning"})}\n\n"
         planner_prompt = await Runner.run(
@@ -114,23 +134,19 @@ async def Streamed_agent_response(memory: Memory, db: MongoDB, cache: RedisCache
                 model=Model,
                 output_type=PlannerOutput
             ),
-            input=full_prompt,
+            input=formatted_prompt,
             context=context,
             run_config=run_config,
             hooks=hooks if hooks else None
         )
         yield f"data: {json.dumps({"event": "done planning"})}\n\n"
 
+        print(f"Planner prompt: {formatted_prompt + planner_prompt.__str__()}")
 
-
-        # Yield a test message to verify streaming is working
-        print(f"Planner prompt: {planner_prompt.__str__()}")
-
-        # Run the memory agent with the context
         print("Starting streamed run...")
         result = Runner.run_streamed(
             starting_agent=starting_agent,
-            input=full_prompt + "\n System: " + planner_prompt.__str__(),
+            input=formatted_prompt + planner_prompt.__str__(),
             context=context,
             run_config=run_config,
             hooks=hooks if hooks else None

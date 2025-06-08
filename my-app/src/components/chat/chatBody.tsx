@@ -47,8 +47,8 @@ export const ChatBody = ({messages, isStreaming, response, username }: ChatBodyP
             <MessageList messages={messages}/>
             {
                 isStreaming && (
-                    <div className = "w-full min-h-150 max-h-fit border border-red-700 flex flex-col grow">
-                        {chatEvent && (<div className="text-md text-neutral-200 glare-text w-fit">{chatEvent}</div>)}
+                    <div className = "w-full min-h-100 max-h-fit flex flex-col grow">
+                        {chatEvent && (<div className="text-md text-accent glare-text w-fit">{chatEvent}</div>)}
                         <StreamingAssistantMessage streamContent={response}/>
                         <DotIndicator/>
                     </div>

@@ -13,5 +13,6 @@ export const useChathistory = (conversation_id: string | null | undefined, user_
         },
         enabled: Boolean(user_id) && conversation_id !== 'pending',
         refetchOnWindowFocus: false,
+        staleTime: 1000 * 60 * 60 * 3,
         
     })

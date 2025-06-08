@@ -6,10 +6,12 @@ import {SidebarConversations} from './SidebarContent';
 import { ErrorCard } from '@/components/utils/ErrorCard';
 import { Sidebar, SidebarContent, SidebarTrigger, SidebarHeader, SidebarFooter } from '../ui/sidebar';
 import { PanelRightOpen } from 'lucide-react';
+import { useMessageHandling } from '@/app/hooks/useMessageHandling';
 
 
 export const SidebarContainer = () => {
     const { conversations, isLoading, error,currentConversationId, setCurrentConversationId, startNewConversation } = useSidebarData();
+    const { isStreaming } = useMessageHandling();
 
     const onNewConversationClick = () => {
         startNewConversation();
@@ -25,20 +27,21 @@ export const SidebarContainer = () => {
 
     return (
         <Sidebar>
-            <SidebarHeader>
-                <div className="flex justify-between items-center border-border">
+            <SidebarHeader className='h-15 flex flex-row items-center justify-between'>
+                <div className="flex justify-between m-0 items-center border-border">
                     <h1>Memory Chat</h1>
-                    <SidebarTrigger>
-                        <PanelRightOpen  />
-                    </SidebarTrigger>
                 </div>
+                <SidebarTrigger>
+                    <PanelRightOpen  />
+                </SidebarTrigger>
             </SidebarHeader>
             <SidebarContent>
                 <SidebarConversations 
                     conversations={conversations} 
                     onNewConversationClick={onNewConversationClick} 
                     onConversationClick={onConversationClick} 
-                    currentConversationId={currentConversationId} 
+                    currentConversationId={currentConversationId}
+                    isStreaming={isStreaming} 
                 />
             </SidebarContent>
             <SidebarFooter>

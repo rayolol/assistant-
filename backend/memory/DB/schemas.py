@@ -10,8 +10,8 @@ from bson import ObjectId
 
 
 
-#TODO: impement Prompt Settings
-#TODO: impement to dto function
+#TODO: implement Prompt Settings
+#TODO: implement to dto function
 class DTOConverter:
     def to_dto(self, dto_class: Type[BaseModel]) -> BaseModel:
         return dto_class.model_validate(self)
@@ -31,7 +31,7 @@ class Users(Document, DTOConverter):
 
 
 class Conversations(Document, DTOConverter):
-    id: Optional[PydanticObjectId]= Field(..., alias= '_id')
+    id: Optional[PydanticObjectId] = Field(default_factory=PydanticObjectId, alias="_id")
     user_id: Union[str, PydanticObjectId ,Link[Users]]
     session_id: str
     name: str = "new conversation"

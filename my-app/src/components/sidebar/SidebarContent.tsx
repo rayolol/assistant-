@@ -9,11 +9,12 @@ interface SidebarContentProps {
     onConversationClick: (conversation: Conversation) => void;
     currentConversationId: string | null;
     onNewConversationClick: () => void;
+    isStreaming: boolean;
 }
 
 
 
-export const SidebarConversations = ({ conversations, onNewConversationClick, onConversationClick, currentConversationId }: SidebarContentProps) => {
+export const SidebarConversations = ({ conversations,isStreaming, onNewConversationClick, onConversationClick, currentConversationId }: SidebarContentProps) => {
     return (
         <nav className="h-screen flex flex-col">
             <section className="m-4">
@@ -29,6 +30,7 @@ export const SidebarConversations = ({ conversations, onNewConversationClick, on
                         conversations={conversations} 
                         onConversationClick={onConversationClick} 
                         currentConversationId={currentConversationId}
+                        isStreaming={isStreaming}
                     />
                 ) : (
                     <p>No conversations</p>

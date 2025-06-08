@@ -11,7 +11,7 @@ from agents import (
 )
 from pydantic import BaseModel
 from settings.settings import Model, settings as S
-
+from mem0 import Memory
 import os
 from ..tools.memory.default_tools import MemoryTools as MT, Mem0Context
 from prompts import prompts as P
@@ -24,9 +24,10 @@ class HandoffInput(BaseModel):
 
 class Agents:
     """Agents for the chatbot"""
-    def __init__(self):
+    def __init__(self, memory: Memory):
         self.settings = ModelSettings(tool_choice = "auto")# parallel_tool_calls = True)
-        MT()
+        self.memory = memory
+        MT(memory)
         
 
         # Create a single shared instance of memory tools

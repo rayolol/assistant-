@@ -1,4 +1,4 @@
-import { coerce, z } from "zod";
+import { z } from "zod";
 
 export const MessageSchema = z.object({
     user_id: z.string(),
@@ -6,7 +6,7 @@ export const MessageSchema = z.object({
     conversation_id: z.string(),
     role: z.string(),
     content: z.string(),
-    timestamp: z.string(),
+    timestamp: z.coerce.date().optional(),
     flags: z.any(),
 })
 
@@ -18,8 +18,8 @@ export const ConversationSchema = z.object({
     user_id: z.string(),
     session_id: z.string(),
     name: z.string(),
-    started_at: z.string(),
-    last_active: z.string(),
+    started_at: z.coerce.date().optional(),
+    last_active: z.coerce.date().optional(),
     is_archived: z.boolean(),
     flags: z.any(),
 })
@@ -30,7 +30,7 @@ export const UserSchema = z.object({
     id: z.string(), // Pydantic ObjectId serialized to string
     username: z.string(),
     email: z.string().email(),
-    created_at: z.string().datetime() // assuming ISO string from backend
+    created_at: z.coerce.date().optional() // assuming ISO string from backend
   });
   
   export type User = z.infer<typeof UserSchema>;

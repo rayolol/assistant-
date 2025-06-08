@@ -16,8 +16,8 @@ class MemoryInput(BaseModel):
     content: str
     
 class MemoryTools:
-    def __init__(self): 
-        set_memory(Memory.from_config(MEMORY_Config))       
+    def __init__(self, mem_instance): 
+        set_memory(mem_instance)       
     
     
     def error_function_tool(): 

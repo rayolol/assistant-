@@ -17,7 +17,9 @@ export const ChatWindow = () => {
   return (  
     <div className="flex flex-col h-full w-4xl mx-auto">
       <ChatBody messages={messages ?? []} isStreaming={isStreaming} response={response} username = {username ?? ""}/>
-      {error && <ErrorCard error={error}/>}
+      <div className='flex items-center justify-center h-full'>
+        {error && <ErrorCard error={error}/>}
+      </div>
       <div ref={messagesEndRef} />
     </div>
   );

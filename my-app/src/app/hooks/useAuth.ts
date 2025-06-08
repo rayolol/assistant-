@@ -6,7 +6,7 @@ import { useGetUser } from "@/app/api/Queries/getUser";
 
 export function useAuth() {
     const { username, email, isAuthenticated, setIsAuthenticated, setUserId, setUsername, setEmail } = useUserStore();
-    const { data: user, error: userError } = useGetUser(username ?? 'Guest', email ?? 'Guest@exampl.com');
+    const { data: user, error: userError } = useGetUser(username ?? 'Guest', email ?? 'Guest@example.com');
     const { mutateAsync: createUser, error: createUserError } = useCreateUser();
 
     const login = async (username: string, email: string, newUser?: boolean | false) => {

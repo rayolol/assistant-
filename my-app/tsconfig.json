@@ -23,6 +23,6 @@
     }
     
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "src/lib/renderer.ts"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "src/lib/renderer.ts", "src/tailwind.config.js"],
   "exclude": ["node_modules"]
 }

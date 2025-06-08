@@ -31,7 +31,11 @@ async def get_user_info(
 
         # Handle guest user
         #TODO: add JWT for real auth
-        user = await db.user.get_user_by_username(username=username)
+        user = await db.user.get_user_by_email(email=email)
+        #TODO: remove later
+        if not user:
+            user = await db.user.create_user(username=username, email=email)
+        # user = await db.user.get_user_by_username(username=username)
 
         if not user:
             raise HTTPException(status_code=404, detail="User not found")

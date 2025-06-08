@@ -31,7 +31,7 @@ export function useMessageHandling() {
       console.log("Setting messages:", fetchedMessages);
       setMessages(fetchedMessages);
     }
-  }, [fetchedMessages, currentConversationId, setMessages]);
+  }, [fetchedMessages, currentConversationId, setMessages, refetch]);
 
   const sendMessage = async (message: string) => {
     if (!userId || !sessionId) {
