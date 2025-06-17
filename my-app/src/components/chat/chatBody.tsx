@@ -49,7 +49,7 @@ export const ChatBody = ({messages, isStreaming, response, username }: ChatBodyP
                 isStreaming && (
                     <div className = "w-full min-h-100 max-h-fit flex flex-col grow">
                         {chatEvent && (<div className="text-md text-accent glare-text w-fit">{chatEvent}</div>)}
-                        <StreamingAssistantMessage streamContent={response}/>
+                        <StreamingAssistantMessage streamContent={response} isStreaming={isStreaming}/>
                         <DotIndicator/>
                     </div>
                 )

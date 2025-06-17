@@ -3,7 +3,7 @@ from fastapi import Depends, HTTPException
 from fastapi.responses import StreamingResponse
 import requests
 from models.models import ChatRequest
-
+from models.schemas import ChatMessageDTO
 from api.utils.Dependencies import get_db, get_cache, get_AI_Memory
 from memory.DB.Mongo.MongoDB import MongoDB
 from memory.Cache.Redis.redisCache import RedisCache
@@ -61,7 +61,7 @@ async def stream_chat(
                     if chunk:  # Only send non-empty chunks
                         print(f"Sending chunk: {chunk}")
                         yield chunk
-                        await asyncio.sleep(0.08)
+                        await asyncio.sleep(0.05)
                         
             except Exception as e:
                 print(f"Error in event generator: {str(e)}")
@@ -108,7 +108,17 @@ async def send_chat_history(conversation_id: str,session_id: str, user_id: str, 
         conversation_history = []
         for msg in history:
             if str(msg.conversation_id) == str(conversation_id) and str(msg.user_id) == str(user_id):
-                conversation_history.append(msg)
+                conversation_history.append(ChatMessageDTO(
+                    id=str(msg.id),
+                    user_id=str(msg.user_id),
+                    conversation_id=str(msg.conversation_id),
+                    session_id=msg.session_id,
+                    timestamp=msg.timestamp,
+                    role=msg.role,
+                    content=msg.content,
+                    file_id=msg.file_id
+                ))
+                print(f"Message added to conversation history: {msg.__str__()}")
 
         print(f"Returning {len(conversation_history)} messages for conversation {conversation_id}")
         return conversation_history

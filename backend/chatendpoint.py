@@ -12,6 +12,7 @@ import api.routes.User
 import api.routes.Messages
 import api.routes.Settings
 import api.routes.Conversations
+import api.routes.file
 
 session = requests.Session()
 
@@ -58,6 +59,7 @@ app.include_router(api.routes.User.UserRouter)
 app.include_router(api.routes.Messages.MessagesRouter)
 app.include_router(api.routes.Settings.SettingsRouter)
 app.include_router(api.routes.Conversations.ConversationsRouter)
+app.include_router(api.routes.file.FileRouter)
 
 @app.get("/")
 async def root():

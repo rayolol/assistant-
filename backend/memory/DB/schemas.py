@@ -48,6 +48,7 @@ class ChatMessage(Document, DTOConverter):
     role: str
     content: str
     metadata: Dict[str, Any] = Field(default_factory=dict)
+    file_id: Optional[str] | None = None
     #tool_calls: List[Dict[str,Any]] = []
     #planned_steps: List[Dict[str,Any]] = []
     #attachments: Any = None

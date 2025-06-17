@@ -1,5 +1,5 @@
 from pydantic import BaseModel, field_serializer, field_validator, Field, SerializationInfo
-from typing import Union
+from typing import Union, Optional, List
 from datetime import datetime
 from bson import ObjectId
 from beanie import PydanticObjectId
@@ -25,13 +25,14 @@ class ConversationDTO(BaseModel):
 
     
 class ChatMessageDTO(BaseModel):
-    id: str = Field(..., alias='_id')
+    id: str
     user_id: str
     conversation_id: str
     session_id: str
     timestamp: datetime
     role: str
     content: str
+    file_id: Optional[str] | None = None
    
 
 class PromptSettingsDTO(BaseModel):
@@ -43,6 +44,8 @@ class PromptSettingsDTO(BaseModel):
     interests: str | None = None
     about_me: str | None = None
     updated_at: str | None = None # ISO string format with milliseconds precision
+
+
 
     
   

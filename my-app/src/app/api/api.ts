@@ -1,12 +1,12 @@
 "use client";
 //import { UserPreferencesSchema } from '../types/zodTypes/userPreferences';
 import axios from 'axios';
-import { ConversationSchema, Message,MessageSchema, Conversation, User, UserSchema, Promptsettings, PromptSettingsSchema } from '../types/schemas';  
+import { ConversationSchema, Message,MessageSchema, Conversation, User, UserSchema, Promptsettings, PromptSettingsSchema, FileAttachmentSchema, FileAttachment } from '../types/schemas';  
 import { z } from "zod";
 
 export const baseURL = 'http://localhost:8001'
 
-const instance = axios.create({
+export const instance = axios.create({
     baseURL: baseURL
 });
 
@@ -57,7 +57,7 @@ export const fetchMessagesHistory = async (conversation_id: string, user_id: str
     try {
         console.log("Fetching messages history for:", { conversation_id, user_id, session_id });
         const response = await instance.get(`/chat/history/${conversation_id}/${user_id}/${session_id}`);
-
+        console.log("Raw messages history response:", response.data);
         return z.array(MessageSchema).parse(response.data);
 
     } catch (error) {
@@ -118,4 +118,33 @@ export const deleteConversation = async (conversation_id: string) => {
     }
 }
 
-export default instance;
+export const uploadFile = async (file: File, user_id: string, conversation_id: string): Promise<string> => {
+    const formData = new FormData();
+
+    formData.append('file', file);
+    formData.append('user_id', user_id);
+    formData.append('conversation_id', conversation_id);
+
+    try {
+        const response = await instance.post('/files/upload-file', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Error uploading file:", error);
+        throw error;
+    }
+
+}
+
+export const getFile = async (fileId: string): Promise<FileAttachment> => {
+    try {
+        const response = await instance.get(`/file/${fileId}`);
+        return FileAttachmentSchema.parse(response.data);
+    } catch (error) {
+        console.error("Error getting file:", error);
+        throw error;
+    }
+}

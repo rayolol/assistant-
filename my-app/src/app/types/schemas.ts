@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const MessageSchema = z.object({
+    id: z.string(),
     user_id: z.string(),
     session_id: z.string(),
     conversation_id: z.string(),
@@ -8,6 +9,7 @@ export const MessageSchema = z.object({
     content: z.string(),
     timestamp: z.coerce.date().optional(),
     flags: z.any(),
+    file_id: z.string().nullable().optional(),
 })
 
 export type Message = z.infer<typeof MessageSchema>;
@@ -48,4 +50,11 @@ export const PromptSettingsSchema = z.object({
   });
   
   export type Promptsettings = z.infer<typeof PromptSettingsSchema>;
-  
+
+export const FileAttachmentSchema = z.object({
+    url: z.string(),
+    name: z.string().optional(),
+    type: z.string().optional(),
+});
+
+export type FileAttachment = z.infer<typeof FileAttachmentSchema>;

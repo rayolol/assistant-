@@ -6,12 +6,10 @@ type Props = {
 };
 
 export function MarkdownRenderer({ content, className = '' }: Props) {
-  const html = renderMarkdown(content);
-
+  console.dir(renderMarkdown(content), { depth: null });
   return (
-    <div
-      className={`prose dark:prose-invert ${className}`}
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
+    <div className={`text-white prose dark:prose-invert ${className}`}>
+      {renderMarkdown(content)}
+    </div>
   );
 }

@@ -21,11 +21,12 @@ class RedisCache:
         return f"{user_id}"
 
     async def get_chat_history(self, db: MongoDB, conversation_id: str, user_id: str) -> Optional[List[ChatMessage]]:
-        key = self.make_key(conversation_id, user_id)
+        key = self.make_key(conversation_id=conversation_id, user_id= user_id)
 
         try:
             raw = await self.redis_client.get(key)
             if raw:
+                print("cache history", raw)
                 return self.deserialize_history(json.loads(raw))
 
             # fallback to Mongo
@@ -44,16 +45,26 @@ class RedisCache:
 
     async def add_message(self, db: MongoDB, session_id: str, conversation_id: str, user_id: str, message: ChatMessage) -> None:
         key = self.make_key(conversation_id, user_id)
-        history = await self.get_chat_history(db, conversation_id, user_id)
-        if history is None:
-            history = []
-        history.append(message)
 
-        await self.redis_client.setex(
+        stored_Message = await ChatMessage.insert(message)
+
+        history = await self.get_chat_history(db, conversation_id, user_id)
+        print("getting history: ", history)
+        if history is None:
+            print("no history")
+            history = []
+        
+        history.append(stored_Message)
+
+        res = await self.redis_client.setex(
             key,
             self.session_ttl,
             json.dumps(self.serialize_history(history))
         )
+
+        print(f"stored message: {stored_Message.__str__()} with response {res}")
+
+
 
     async def flush_cache_to_DB(self, conversation_id: str, user_id: str, db: MongoDB) -> None:
         key = self.make_key(conversation_id, user_id)
@@ -65,7 +76,14 @@ class RedisCache:
             await db.message.add_messages(msgs, conversation_id)
 
     def serialize_history(self, messages: List[ChatMessage]) -> List[dict]:
-        return [msg.model_dump(mode='json') for msg in messages]
+        results = []
+        for msg in messages:
+            msg_dict = msg.model_dump(mode='json')
+            # Convert null file_id to undefined (by removing the field)
+            if msg_dict.get('file_id') is None:
+                msg_dict.pop('file_id', None)
+            results.append(msg_dict)
+        return results
 
     def deserialize_history(self, data: List[dict]) -> List[ChatMessage]:
         results = []

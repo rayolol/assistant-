@@ -15,7 +15,7 @@ export const ChatWindow = () => {
   useAutoScroll(messagesEndRef, isStreaming);
 
   return (  
-    <div className="flex flex-col h-full w-4xl mx-auto">
+    <div className="flex flex-col h-full w-max-4xl mx-50 w-min-[500px]">
       <ChatBody messages={messages ?? []} isStreaming={isStreaming} response={response} username = {username ?? ""}/>
       <div className='flex items-center justify-center h-full'>
         {error && <ErrorCard error={error}/>}

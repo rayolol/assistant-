@@ -100,7 +100,7 @@ async def Streamed_agent_response(memory: Memory, db: MongoDB, cache: RedisCache
             starting_agent = agent.Main_agent(instructions=userdescription.__str__())
 
         print(f"after creating starting agent: ;{time.monotonic() - start}")
-        memories = asyncio.to_thread(
+        memories = await asyncio.to_thread(
             memory.search,
             query=user_input,
             user_id=context.user_id,

@@ -1,37 +1,29 @@
-import Image from 'next/image';
-import React, { memo } from 'react';
-import { Pencil, Copy } from 'lucide-react';
-
+import React, { memo, useEffect } from 'react';
+import { Attachment } from './Attachment';
+import { Message } from '@/app/types/schemas';
+import { useGetFile } from '@/app/api/Queries/getfile';
 
 interface UserMessageProps {
-    message: string;
-    attachment?: string | null;
+    message: Message;
     ref: React.RefObject<HTMLDivElement | null>;
 }
 
-
-
-export const UserMessage = memo(({ message, attachment = null, ref }: UserMessageProps) => {
+export const UserMessage = memo(({ message, ref }: UserMessageProps) => {
+  
+    const { data: file, isLoading: isFileLoading } = useGetFile(message.file_id || '');
+    useEffect(()=>{
+        console.log("message content:", message.content)
+    }, [message])
 
     return (
         <div className="m-2 flex flex-col items-end transition-all ease-in-out duration-50 slide-up scroll-mt-[64px]" ref={ref}>
             <div className="px-4 py-3 rounded-4xl max-w-[40%] bg-accent text-accent-foreground">
                 <div className="whitespace-pre-wrap">
-                    {attachment && (
-                        <div className="mb-2">
-                            <Image src={attachment} alt="Attachment" className="max-w-xs" />
-                        </div>
+                    {message.file_id && (
+                        <Attachment filePath={file?.url || ''} fileName={file?.name} fileType={file?.type} />
                     )}
-                    {message}
+                    {message.content}
                 </div>
-            </div>
-            <div className="flex gap-2 mt-1 opacity-0 hover:opacity-100 transition-opacity ease-in duration-300">
-                <button className="p-1 rounded-full text-muted-foreground hover:text-accent-foreground transition-colors">
-                    <Pencil size={16} />
-                </button>
-                <button className="p-1 rounded-full text-muted-foreground hover:text-accent-foreground transition-colors">
-                    <Copy size={16} />
-                </button>
             </div>
         </div>
     );

@@ -1,47 +1,92 @@
 "use client";
-import { useEffect, useState } from 'react';
-import eventEmitter from '@/lib/EventEmitter';
-import { Message } from '../types/schemas';
-import { useUserStore } from './StoreHooks/UserStore';
-import { useMessageStore } from './StoreHooks/useMessageStore';
-import { useCreateConversation } from '@/app/api/Queries/createConversation';
-import { useChathistory } from '@/app/api/Queries/chatHistory';
-import { set } from 'zod';
+
+import { useEffect, useRef, useState, startTransition } from "react";
+import eventEmitter from "@/lib/EventEmitter";
+import { Message } from "../types/schemas";
+import { useUserStore } from "./StoreHooks/UserStore";
+import { useMessageStore } from "./StoreHooks/useMessageStore";
+import { useCreateConversation } from "@/app/api/Queries/createConversation";
+import { useChathistory } from "@/app/api/Queries/chatHistory";
 
 export function useMessageHandling() {
   const { userId, sessionId } = useUserStore();
-  const { 
-    currentConversationId, 
-    setMessages, 
-    messages, 
-    setCurrentConversationId, 
-    response, 
-    setResponse, 
-    isStreaming, 
-    setIsStreaming 
+  const {
+    currentConversationId,
+    setMessages,
+    messages,
+    setCurrentConversationId,
+    response,
+    setResponse,
+    isStreaming,
+    setIsStreaming,
   } = useMessageStore();
 
-  const { data: fetchedMessages = [], isLoading, error, refetch } = useChathistory(currentConversationId, userId, sessionId);
-  const { mutate: createConversation } = useCreateConversation();
+  const assistantRef = useRef<string>(""); // Accumulate assistant tokens
   const [streamingConversationId, setStreamingConversationId] = useState<string | null>(null);
 
-  // Set fetched messages once they're loaded
+  const { data: fetchedMessages = [], isLoading, error, refetch } = useChathistory(
+    currentConversationId,
+    userId,
+    sessionId
+  );
+  const { mutate: createConversation } = useCreateConversation();
+
+  // Load chat history if it exists
   useEffect(() => {
     if (fetchedMessages.length > 0 && currentConversationId) {
-      console.log("Setting messages:", fetchedMessages);
       setMessages(fetchedMessages);
     }
-  }, [fetchedMessages, currentConversationId, setMessages, refetch]);
+  }, [fetchedMessages, currentConversationId, setMessages]);
 
+  // Refetch when switching conversations
+  useEffect(() => {
+    if (currentConversationId && currentConversationId !== "pending") {
+      refetch();
+    }
+  }, [currentConversationId, refetch]);
+
+  // Token-by-token update logic
+  const appendToken = (token: string) => {
+    assistantRef.current += token;
+
+    startTransition(() => {
+      setMessages((prev) => {
+        const lastIndex = prev.length - 1;
+
+        if (lastIndex >= 0 && prev[lastIndex].role === "assistant") {
+          const updated = [...prev];
+          updated[lastIndex] = {
+            ...updated[lastIndex],
+            content: assistantRef.current,
+          };
+          return updated;
+        } else {
+          return [
+            ...prev,
+            {
+              user_id: userId,
+              session_id: sessionId,
+              conversation_id: currentConversationId,
+              role: "assistant",
+              content: assistantRef.current,
+              timestamp: new Date().toISOString(),
+              flags: {},
+            },
+          ];
+        }
+      });
+    });
+  };
+
+  // Send a user message and stream response
   const sendMessage = async (message: string) => {
     if (!userId || !sessionId) {
-      throw new Error('User not authenticated');
+      throw new Error("User not authenticated");
     }
 
     let actualConversationId = currentConversationId;
 
-    //TODO: make a sending pending request.
-    
+    // Create new conversation if needed
     if (currentConversationId === "pending") {
       try {
         const result = await new Promise((resolve, reject) => {
@@ -49,126 +94,104 @@ export function useMessageHandling() {
             { user_id: userId, name: "New Conversation" },
             {
               onSuccess: (data) => resolve(data),
-              onError: (error) => reject(error)
+              onError: (error) => reject(error),
             }
           );
         });
-        
+
         actualConversationId = (result as { id: string }).id;
         setCurrentConversationId(actualConversationId);
       } catch (error) {
         console.error("Failed to create conversation:", error);
-        throw new Error('Failed to create conversation');
+        throw new Error("Failed to create conversation");
       }
     }
-    
+
     const payload: Message = {
       user_id: userId,
       session_id: sessionId,
       conversation_id: actualConversationId,
-      role: 'user',
+      role: "user",
       content: message,
       timestamp: new Date().toISOString(),
       flags: {},
     };
-    
+
     setMessages((prev) => [...(prev || []), payload]);
 
     try {
-      console.log("Sending message to server: ", message);
       const encodedMessage = encodeURIComponent(message);
       const url = `http://localhost:8001/chat/${userId}/${sessionId}/${actualConversationId}?message=${encodedMessage}`;
-      console.log("Connecting to SSE endpoint:", url);
-      
+
       const eventSource = new EventSource(url);
-      
-      // Set streaming state to true when starting
+
       setIsStreaming(true);
       setStreamingConversationId(actualConversationId);
-      
-      eventSource.onopen = (event) => {
-        console.log("SSE connection opened:", event);
+
+      eventSource.onopen = () => {
+        console.log("SSE connection opened.");
+        assistantRef.current = ""; // Reset accumulated tokens
       };
-      let animationFrame: number | null = null;
-      let responseText = '';
-    
+
       eventSource.onmessage = (event) => {
-        console.log("Received SSE message:", event.data);
-        
         try {
           const chunk = JSON.parse(event.data);
 
-          
-          if (chunk.event) { 
+          if (chunk.event) {
             eventEmitter.emit("chatEvent", chunk.event);
-          } else {
-            console.log("no event recorded");
           }
-          
+
           if (chunk.chunk) {
-            responseText += chunk.chunk;
-            setResponse(responseText);
+            appendToken(chunk.chunk);
           }
         } catch (e) {
-          console.error("Failed to parse SSE JSON chunk:", e, event.data);
+          console.error("Invalid SSE chunk:", e, event.data);
         }
-    
-      }
+      };
 
       eventSource.onerror = (error) => {
-        console.error('EventSource error:', {
-          readyState: eventSource.readyState,
-          url: eventSource.url,
-          error
-        });
-
-        eventEmitter.emit("chatEvent", null); 
+        console.error("SSE error:", error);
         eventSource.close();
 
         setIsStreaming(false);
         setStreamingConversationId(null);
 
-        const finalResponse = responseText;
-        if (finalResponse && finalResponse.trim()) {
-          const assistantMessage: Message = {
-            user_id: userId,
-            session_id: sessionId,
-            conversation_id: actualConversationId,
-            role: 'assistant',
-            content: finalResponse,
-            timestamp: new Date().toISOString(),
-            flags: {},
-          };
+        // Finalize message
+        const finalResponse = assistantRef.current;
+        assistantRef.current = "";
 
-          setMessages((prev) => [...(prev || []), assistantMessage]);
-        }
+        // if (finalResponse && finalResponse.trim()) {
+        //   const assistantMessage: Message = {
+        //     user_id: userId,
+        //     session_id: sessionId,
+        //     conversation_id: actualConversationId,
+        //     role: "assistant",
+        //     content: finalResponse,
+        //     timestamp: new Date().toISOString(),
+        //     flags: {},
+        //   };
 
-        setResponse('');
-        responseText = '';
-        
+        //   setMessages((prev) => [...(prev || []), assistantMessage]);
+        // }
+
+        setResponse("");
       };
 
-      
       return () => {
-       
         if (eventSource.readyState !== EventSource.CLOSED) {
           eventSource.close();
         }
-        
-        // Set streaming state to false on cleanup
         setIsStreaming(false);
         setStreamingConversationId(null);
-        
-        // Clear response state
-        setResponse('');
-        responseText = '';
+        setResponse("");
+        assistantRef.current = "";
       };
-    
     } catch (error) {
-      console.error("Error sending message:", error);
+      console.error("Failed to send SSE request:", error);
       setIsStreaming(false);
       setStreamingConversationId(null);
-      setResponse('');
+      setResponse("");
+      assistantRef.current = "";
     }
   };
 
@@ -183,9 +206,3 @@ export function useMessageHandling() {
     streamingConversationId,
   };
 }
-
-
-
-
-
-

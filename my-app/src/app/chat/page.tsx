@@ -34,9 +34,9 @@ const ChatPage = () => {
     if (!mounted) return null;
     
     return (
-      <div className="flex h-screen w-full bg-background text-foreground overflow-hidden">
+      <div className="flex h-screen w-full bg-background flex-1 text-foreground overflow-hidden">
         <SidebarContainer/>
-        <ContentContainer fluid={true} className='flex flex-col min-w-0 items-center'>
+        <ContentContainer fluid={true} className='flex flex-col min-w-0 overflow-hidden'>
           {/* Header */}
           <header className="w-full bg-background border-border border-b-2 py-4 h-15 px-6 flex items-center justify-between">
             {state === "collapsed" ? <SidebarTrigger /> : <div></div>}
@@ -44,7 +44,7 @@ const ChatPage = () => {
           </header>
 
           {/* Main content */}
-          <main className="flex flex-col flex-1 h-full overflow-y-auto">
+          <main className="flex flex-col h-full overflow-y-auto">
              <ChatWindow/>
           </main>
 
