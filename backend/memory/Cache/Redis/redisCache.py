@@ -26,7 +26,6 @@ class RedisCache:
         try:
             raw = await self.redis_client.get(key)
             if raw:
-                print("cache history", raw)
                 return self.deserialize_history(json.loads(raw))
 
             # fallback to Mongo
@@ -49,7 +48,6 @@ class RedisCache:
         stored_Message = await ChatMessage.insert(message)
 
         history = await self.get_chat_history(db, conversation_id, user_id)
-        print("getting history: ", history)
         if history is None:
             print("no history")
             history = []
@@ -62,7 +60,6 @@ class RedisCache:
             json.dumps(self.serialize_history(history))
         )
 
-        print(f"stored message: {stored_Message.__str__()} with response {res}")
 
 
 

@@ -49,7 +49,7 @@ export const uploadFile = async (
   formData.append('conversationId', conversationId);
 
   try {
-    const response = await instance.post('/files/upload', formData, {
+    const response = await instance.post(`/files/upload`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },

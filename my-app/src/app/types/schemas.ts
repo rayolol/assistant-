@@ -9,7 +9,7 @@ export const MessageSchema = z.object({
     content: z.string(),
     timestamp: z.coerce.date().optional(),
     flags: z.any(),
-    file_id: z.string().nullable().optional(),
+    file_id: z.string().nullable(),
 })
 
 export type Message = z.infer<typeof MessageSchema>;

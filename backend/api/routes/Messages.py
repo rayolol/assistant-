@@ -1,7 +1,8 @@
 import fastapi
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 import requests
+from typing import Optional
 from models.models import ChatRequest
 from models.schemas import ChatMessageDTO
 from api.utils.Dependencies import get_db, get_cache, get_AI_Memory
@@ -37,16 +38,19 @@ async def stream_chat(
     session_id: str,
     conversation_id: str,
     message: str,
+    fileId: Optional[str] = Query(None),
     db: MongoDB = Depends(get_db),
     cache: RedisCache = Depends(get_cache),
     memory: Memory = Depends(get_AI_Memory)
 ) -> StreamingResponse:
     try:
         print(f"Starting SSE stream for user {user_id}, session {session_id}, conversation {conversation_id}")
+        print("file_id", fileId)
         context = Mem0Context(
             user_id=user_id,
             session_id=session_id,
-            conversation_id=conversation_id if conversation_id else None,           
+            conversation_id=conversation_id if conversation_id else None,
+            file_id=fileId if fileId else None            
         )
         
         async def event_generator():
@@ -118,9 +122,9 @@ async def send_chat_history(conversation_id: str,session_id: str, user_id: str, 
                     content=msg.content,
                     file_id=msg.file_id
                 ))
-                print(f"Message added to conversation history: {msg.__str__()}")
 
         print(f"Returning {len(conversation_history)} messages for conversation {conversation_id}")
+        print("file_id: ", [c.file_id for c in conversation_history])
         return conversation_history
 
     except Exception as e:

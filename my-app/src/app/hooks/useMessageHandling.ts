@@ -79,7 +79,7 @@ export function useMessageHandling() {
   };
 
   // Send a user message and stream response
-  const sendMessage = async (message: string) => {
+  const sendMessage = async (message: string, fileId: string | null = null) => {
     if (!userId || !sessionId) {
       throw new Error("User not authenticated");
     }
@@ -114,14 +114,19 @@ export function useMessageHandling() {
       role: "user",
       content: message,
       timestamp: new Date().toISOString(),
+      file_id: fileId,
       flags: {},
     };
 
     setMessages((prev) => [...(prev || []), payload]);
+    let query = ""
 
     try {
       const encodedMessage = encodeURIComponent(message);
-      const url = `http://localhost:8001/chat/${userId}/${sessionId}/${actualConversationId}?message=${encodedMessage}`;
+      if (fileId) {
+        query = `&fileId=${encodeURIComponent(fileId)}`;
+      } 
+      const url = `http://localhost:8001/chat/${userId}/${sessionId}/${actualConversationId}?message=${encodedMessage}${query}`;
 
       const eventSource = new EventSource(url);
 

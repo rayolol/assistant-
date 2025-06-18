@@ -64,6 +64,7 @@ class Mem0Context(BaseModel):
     recent_memories: List[Dict[str, Any]] | None = None
     user_id: Union[str | PydanticObjectId] | None = None
     session_id: str | None = None
+    file_id: str | None = None
     session_start_time: datetime = Field(default_factory=datetime.now)
     conversation_id: str | None = None
     current_agent: str | None = None

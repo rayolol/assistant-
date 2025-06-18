@@ -82,6 +82,7 @@ async def Streamed_agent_response(memory: Memory, db: MongoDB, cache: RedisCache
             session_id=context.session_id,
             conversation_id=context.conversation_id,
             role="user",
+            file_id=context.file_id,
             content=user_input,
             metadata={"current_agent": context.current_agent}  # Store current agent in user message too
         )
@@ -125,6 +126,7 @@ async def Streamed_agent_response(memory: Memory, db: MongoDB, cache: RedisCache
             starting_agent=Agent[Mem0Context](
                 name="Planner Agent",
                 instructions="""You are a planner agent. You are responsible for planning the response of the agent.
+                                You will have to make sure the agent doesnt repeat itself when talking to user
                                 You will be given a conversation history and a user message.
                                 You will need to plan the next step for the agent.
                                 You will need to decide which agent to handoff to.
@@ -140,6 +142,7 @@ async def Streamed_agent_response(memory: Memory, db: MongoDB, cache: RedisCache
             hooks=hooks if hooks else None
         )
         yield f"data: {json.dumps({"event": "done planning"})}\n\n"
+        print(f"got file in prompts: {context.file_id if context.file_id else "i did not see it"}")
 
         print(f"Planner prompt: {formatted_prompt + planner_prompt.__str__()}")
 

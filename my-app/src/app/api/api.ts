@@ -58,7 +58,9 @@ export const fetchMessagesHistory = async (conversation_id: string, user_id: str
         console.log("Fetching messages history for:", { conversation_id, user_id, session_id });
         const response = await instance.get(`/chat/history/${conversation_id}/${user_id}/${session_id}`);
         console.log("Raw messages history response:", response.data);
-        return z.array(MessageSchema).parse(response.data);
+        const clean =  z.array(MessageSchema).parse(response.data);
+        console.log("parsed response: ", clean);
+        return clean;
 
     } catch (error) {
         console.error("Error fetching message history:", error);
@@ -141,7 +143,7 @@ export const uploadFile = async (file: File, user_id: string, conversation_id: s
 
 export const getFile = async (fileId: string): Promise<FileAttachment> => {
     try {
-        const response = await instance.get(`/file/${fileId}`);
+        const response = await instance.get(`/file/metadata/${fileId}`);
         return FileAttachmentSchema.parse(response.data);
     } catch (error) {
         console.error("Error getting file:", error);

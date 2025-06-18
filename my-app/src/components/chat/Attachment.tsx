@@ -1,16 +1,23 @@
 import Image from 'next/image';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FileIcon, ImageIcon, FileTextIcon, FileArchiveIcon } from 'lucide-react';
 
 interface AttachmentProps {
   filePath: string;
   fileName?: string;
   fileType?: string;
+  loading?: boolean
 }
 
-export const Attachment = ({ filePath, fileName, fileType }: AttachmentProps) => {
+export const Attachment = ({ filePath, fileName, fileType, loading }: AttachmentProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
+
+  useEffect(() => {
+    if (loading !== undefined) {
+      setIsLoading(loading)
+    }
+  }, [loading])
   
   // Determine if it's an image based on file type or path extension
   const isImage = fileType?.startsWith('image/') || 
@@ -28,7 +35,7 @@ export const Attachment = ({ filePath, fileName, fileType }: AttachmentProps) =>
   };
   
   if (!filePath) return null;
-  
+  //FIXME: get real url on shipping
   return (
     <div className="attachment-container mb-2 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
       {isImage ? (
@@ -39,7 +46,7 @@ export const Attachment = ({ filePath, fileName, fileType }: AttachmentProps) =>
             <span className="ml-2 text-sm text-gray-500">Failed to load image</span>
           </div>}
           <Image 
-            src={filePath}
+            src={"http://localhost:8001" + filePath}
             alt={fileName || "Attachment"}
             width={300}
             height={200}

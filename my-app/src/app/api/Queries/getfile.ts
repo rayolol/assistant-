@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getFile } from "@/app/api/api";
 import { FileAttachment } from "@/app/types/schemas";
 
-export const useGetFile = (fileId: string) => {
+export const useGetFile = (fileId: string | null) => {
     return useQuery<FileAttachment, Error>({
         queryKey: ['file', fileId],
         queryFn: () => getFile(fileId),
