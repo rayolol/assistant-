@@ -1,6 +1,6 @@
 from beanie import init_beanie
 from motor.motor_asyncio import AsyncIOMotorClient
-from memory.DB.schemas import Users, ChatMessage, Conversations, PromptSettings
+from memory.DB.schemas import Users, ChatMessage, Conversations, PromptSettings, FileMeta
 
 async def init_db():
     client = AsyncIOMotorClient(
@@ -15,5 +15,5 @@ async def init_db():
         )
     await init_beanie(
         database=client.user_db,
-        document_models=[Users, ChatMessage, Conversations, PromptSettings],
+        document_models=[Users, ChatMessage, Conversations, PromptSettings, FileMeta],
     )

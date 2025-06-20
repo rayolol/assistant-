@@ -10,6 +10,7 @@ from openai.types.responses import ResponseTextDeltaEvent
 from models.models import Mem0Context
 from memory.DB.schemas import ChatMessage
 from memory.Cache.Redis.redisCache import RedisCache
+from memory.Cache.DiskCache.diskCache import DiskCache
 from memory.DB.Mongo.MongoDB import MongoDB 
 from settings.settings import MEMORY_Config as memory_config, Model
 from mem0 import Memory
@@ -17,8 +18,9 @@ from agentic.handoffs.agent import Agents
 from typing import Callable, Literal, Optional
 from pydantic import BaseModel
 from prompts.prompt_builder import format_prompt
-import json
 
+import json
+from core.Multimodal import build_multimodal_input
 
 class Step(BaseModel):
     step_number: int
@@ -29,7 +31,7 @@ class PlannerOutput(BaseModel):
     conversation_name: Optional[str] | None = None
 
 
-async def Streamed_agent_response(memory: Memory, db: MongoDB, cache: RedisCache, context: Mem0Context, user_input: str, hooks: dict[str, Callable] | None = None):
+async def Streamed_agent_response(dc:DiskCache, memory: Memory, db: MongoDB, cache: RedisCache, context: Mem0Context, user_input: str, hooks: dict[str, Callable] | None = None):
     """
     Process a user message through the agent and return the response
 
@@ -87,7 +89,10 @@ async def Streamed_agent_response(memory: Memory, db: MongoDB, cache: RedisCache
             metadata={"current_agent": context.current_agent}  # Store current agent in user message too
         )
         # Add to Redis cache
-        await cache.add_message(db, conversation_id=context.conversation_id , user_id=context.user_id, session_id=context.session_id, message= user_message)
+        new_messge = await cache.add_message(db, conversation_id=context.conversation_id , user_id=context.user_id, session_id=context.session_id, message= user_message)
+        if context.file_id:
+            await cache.load_cache_in_db(context.user_id, context.conversation_id, new_messge.id, context.file_id, db)
+
         print(f"after adding user message to cache: ;{time.monotonic() - start}")
         userdescription = await db.prompt_settings.get_by_user_id(context.user_id)
 
@@ -112,6 +117,8 @@ async def Streamed_agent_response(memory: Memory, db: MongoDB, cache: RedisCache
 
         print(f"after getting memories: ;{time.monotonic() - start}")
         full_prompt = build_full_prompt(history, memories,context.conversation_id, user_input, userdescription.__str__())
+        if context.file_id:
+            multimodal_prompt = build_multimodal_input(user_input, context.file_id, dc)
         formatted_prompt = format_prompt(full_prompt)
         print(f"Full prompt built: {full_prompt.__str__()}")
         run_config = RunConfig(
@@ -147,9 +154,10 @@ async def Streamed_agent_response(memory: Memory, db: MongoDB, cache: RedisCache
         print(f"Planner prompt: {formatted_prompt + planner_prompt.__str__()}")
 
         print("Starting streamed run...")
+        print("mulitmodal prompt: ",multimodal_prompt)
         result = Runner.run_streamed(
             starting_agent=starting_agent,
-            input=formatted_prompt + planner_prompt.__str__(),
+            input=formatted_prompt + planner_prompt.__str__() if not context.file_id else multimodal_prompt,
             context=context,
             run_config=run_config,
             hooks=hooks if hooks else None

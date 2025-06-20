@@ -6,6 +6,7 @@ from typing import Optional
 from models.models import ChatRequest
 from models.schemas import ChatMessageDTO
 from api.utils.Dependencies import get_db, get_cache, get_AI_Memory
+from memory.Cache.DiskCache.diskCache import DiskCache
 from memory.DB.Mongo.MongoDB import MongoDB
 from memory.Cache.Redis.redisCache import RedisCache
 import traceback
@@ -41,7 +42,8 @@ async def stream_chat(
     fileId: Optional[str] = Query(None),
     db: MongoDB = Depends(get_db),
     cache: RedisCache = Depends(get_cache),
-    memory: Memory = Depends(get_AI_Memory)
+    memory: Memory = Depends(get_AI_Memory),
+    dc: DiskCache = Depends(lambda: DiskCache())
 ) -> StreamingResponse:
     try:
         print(f"Starting SSE stream for user {user_id}, session {session_id}, conversation {conversation_id}")
@@ -60,7 +62,8 @@ async def stream_chat(
                     db=db,
                     cache=cache,
                     context=context,
-                    user_input=message
+                    user_input=message,
+                    dc=dc
                 ):
                     if chunk:  # Only send non-empty chunks
                         print(f"Sending chunk: {chunk}")

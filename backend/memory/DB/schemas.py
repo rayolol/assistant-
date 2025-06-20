@@ -3,6 +3,7 @@ from beanie import Document
 from datetime import datetime
 from pydantic import Field, field_validator, field_serializer
 from beanie import Link
+from models.schemas import FileDoc
 from pydantic import BaseModel
 from typing import Dict, Any, Union, List, Type, Optional
 from beanie import PydanticObjectId
@@ -63,4 +64,15 @@ class PromptSettings(Document, DTOConverter):
     interests: str | None = None
     about_me: str | None = None
     updated_at: datetime = Field(default_factory=datetime.now)
+
+
+
+class FileMeta(Document): 
+    id: Optional[PydanticObjectId] = Field(default_factory=PydanticObjectId, alias="_id")
+    user_id: Union[str, PydanticObjectId, Link[Users]]
+    conversation_id: Union[str, PydanticObjectId, Link[Conversations]]
+    message_id: Union[str, PydanticObjectId, Link[ChatMessage]]
+    file_metadata: FileDoc
+    
+
 

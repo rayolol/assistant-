@@ -2,6 +2,9 @@ import fastapi
 from fastapi import File, UploadFile, Depends, HTTPException
 import uuid
 import os
+from api.utils.Dependencies import get_cache
+from memory.Cache.Redis.redisCache import RedisCache
+from models.schemas import FileDoc
 from pathlib import Path
 from memory.Cache.DiskCache.diskCache import DiskCache
 
@@ -73,10 +76,11 @@ async def get_file(file_id: str, dc = Depends(get_disk_cache)):
         raise HTTPException(status_code=500, detail=e)
     
 
-@FileRouter.post("/files/upload/") 
+@FileRouter.post("/files/upload") 
 async def upload_file(
     file: UploadFile = File(...),
-    dc = Depends(get_disk_cache)
+    dc: DiskCache = Depends(get_disk_cache),
+    cache: RedisCache = Depends(get_cache)
 ): 
     try:
         file_id = uuid.uuid4()
@@ -86,17 +90,20 @@ async def upload_file(
         if not safe_filename:
             safe_filename = f"uploaded_file_{file_id}" 
 
+
         content = await file.read()
+        fileDoc = FileDoc(
+            file_id=str(file_id),
+            file_name=safe_filename,
+            file_type=file.content_type,
+            file_size=len(content),
+            file_url= f"/file/content/{file_id}"
+        )
+
+        await cache.cache_file_metadata(file_id, fileDoc)
         dc.Write(file.filename, file_id, content)
 
-        return {
-            "file_id": file_id,
-            "file_name": safe_filename,
-            "file_type": file.content_type,
-            "file_size": len(content),
-            "file_url": f"/file/{file_id}"
-        }
-            
+        return fileDoc
 
     except Exception as e:
         print(f"Error during file upload to temporary disk cache: {e}") 

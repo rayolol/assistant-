@@ -2,6 +2,8 @@ import redis.asyncio as r
 import json
 from memory.DB.schemas import ChatMessage
 from typing import List, Optional
+from models.schemas import FileDoc
+from memory.DB.schemas import FileMeta
 from memory.DB.Mongo.MongoDB import MongoDB
 
 class RedisCache:
@@ -47,6 +49,9 @@ class RedisCache:
 
         stored_Message = await ChatMessage.insert(message)
 
+        if not stored_Message:
+            raise Exception("could not store message")
+
         history = await self.get_chat_history(db, conversation_id, user_id)
         if history is None:
             print("no history")
@@ -59,6 +64,7 @@ class RedisCache:
             self.session_ttl,
             json.dumps(self.serialize_history(history))
         )
+        return stored_Message
 
 
 
@@ -90,3 +96,31 @@ class RedisCache:
             except Exception:
                 continue
         return results
+    
+
+    async def cache_file_metadata(self, file_id: str, metadata: FileDoc, ttl:int = 600):
+        await self.redis_client.setex( f"filemeta: {file_id}", ttl, metadata.model_dump_json())
+
+
+    async def load_cache_in_db(self, user_id: str, conversation_id: str, message_id: str, file_id: str, db:MongoDB):
+        raw = await self.redis_client.get(f"filemeta: {file_id}")
+        if raw:
+            await db.file.create(
+                user_id= user_id, 
+                conversation_id= conversation_id, 
+                message_id= message_id,
+                fileDoc= FileDoc.model_validate_json(raw)
+                )
+        else: 
+            raise Exception("file not found in cache")
+            
+
+    async def get_file_metadata(self, file_id: str):
+        raw = await self.redis_client.get(f"filemeta: {file_id}")
+        if raw: 
+            return FileDoc.model_validate_json(raw)
+        else: 
+            raise Exception("file not found in cache")
+        
+    
+        

@@ -46,6 +46,15 @@ class PromptSettingsDTO(BaseModel):
     updated_at: str | None = None # ISO string format with milliseconds precision
 
 
+class FileDoc(BaseModel):
+    file_id: str
+    file_type: str
+    file_size: int
+    file_name: str 
+    file_url: str
+
+
+
 
     
   
