@@ -4,7 +4,8 @@ from fastapi import Depends, HTTPException, Request
 from memory.DB.Mongo.MongoDB import MongoDB
 from memory.Cache.Redis.redisCache import RedisCache
 import traceback
-from api.utils.Dependencies import get_db, get_cache
+from services.appContext import AppContext
+from api.utils.Dependencies import get_app_context
 from typing import List
 
 ConversationsRouter = fastapi.APIRouter()
@@ -13,23 +14,15 @@ ConversationsRouter = fastapi.APIRouter()
 @ConversationsRouter.get("/chat/conversations/{user_id}", response_model=List[ConversationDTO])
 async def get_user_conversations(
     user_id: str,
-    db: MongoDB = Depends(get_db),
-    cache: RedisCache = Depends(get_cache)
+    appcontext:AppContext = Depends(get_app_context)
 ) -> List[ConversationDTO]:
     """Endpoint to retrieve all conversations for a user"""
     try:
         if not user_id:
             raise HTTPException(status_code=400, detail="user_id is required")
         # Get all conversations for the user
-        conversations = await db.conversation.get_by_user_id(user_id)
-
-        # If conversations is None or empty, return an empty list
-        if not conversations:
-            return []
-
-        # If it's a single conversation object, convert to list
-        if not isinstance(conversations, list):
-            conversations = [conversations]
+        conversations = await appcontext.conversationService.get_conversations_list(user_id)
+        
 
         print(f"Returning conversations: {conversations}")
         return [ConversationDTO(
@@ -52,15 +45,14 @@ async def get_user_conversations(
 async def create_conversation(
     request: Request,
     user_id: str,
-    db: MongoDB = Depends(get_db),
-    cache: RedisCache = Depends(get_cache)
+    appcontext: AppContext = Depends(get_app_context)
 )-> ConversationDTO:
     """Endpoint to create a new conversation for a user"""
     try:
         if not user_id:
             raise HTTPException(status_code=400, detail="user_id is required")            
 
-        conversation = await db.conversation.create(user_id)
+        conversation = await appcontext.conversationService.db.conversation.create(user_id)
 
         print(f"Created conversation: {conversation}")
 
@@ -82,14 +74,13 @@ async def create_conversation(
 @ConversationsRouter.delete("/chat/conversations/{conversation_id}")
 async def delete_conversation(
     conversation_id: str,
-    db: MongoDB = Depends(get_db),
-    cache: RedisCache = Depends(get_cache)
+    appcontext: AppContext = Depends(get_app_context)
     ):
     """Endpoint to delete a conversation"""
     try:
         if not conversation_id:
             raise HTTPException(status_code=400, detail="conversation_id is required")
-        if await db.conversation.delete(conversation_id):
+        if await appcontext.conversationService.db.conversation.delete(conversation_id):
             return {"message": "Conversation deleted"}
         else:
             raise HTTPException(status_code=500, detail="could not delete conversation")

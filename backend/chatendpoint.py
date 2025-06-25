@@ -7,7 +7,7 @@ import requests
 from contextlib import asynccontextmanager
 from memory.Cache.Redis.redisCache import RedisCache
 from mem0 import Memory
-from settings.settings import MEMORY_Config
+from services.appContext import AppContext
 import api.routes.User
 import api.routes.Messages
 import api.routes.Settings
@@ -27,14 +27,10 @@ session.headers.update({
 async def lifespan(app: FastAPI):
     # Startup
     print("Starting up...")
-    start = time.monotonic()
-    app.state.db = MongoDB()
-    print(f"after creating db instance: ;{time.monotonic() - start}") if app.state.db else print("DB_instance is None")
-    await app.state.db.initialize()
-    app.state.cache = RedisCache()
-    print(f"after creating cache instance: ;{time.monotonic() - start}") if app.state.cache else print("Cache_instance is None")
-    app.state.memory = Memory.from_config(MEMORY_Config)    
-    print(f"after creating memory instance: ;{time.monotonic() - start}") if app.state.memory else print("Memory_instance is None")
+    #TODO: add app config
+    app.state.AppContext = AppContext()
+    await app.state.AppContext.init()
+
     yield
     # Shutdown
     session.close()

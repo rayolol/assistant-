@@ -9,18 +9,20 @@ from agents import Runner, RunConfig, Agent
 from openai.types.responses import ResponseTextDeltaEvent
 from models.models import Mem0Context
 from memory.DB.schemas import ChatMessage
-from memory.Cache.Redis.redisCache import RedisCache
-from memory.Cache.DiskCache.diskCache import DiskCache
-from memory.DB.Mongo.MongoDB import MongoDB 
+
 from settings.settings import MEMORY_Config as memory_config, Model
-from mem0 import Memory
-from agentic.handoffs.agent import Agents
 from typing import Callable, Literal, Optional
 from pydantic import BaseModel
 from prompts.prompt_builder import format_prompt
+from services.uploadFileService import uploadService
+from modules.prompt_preprocessor import PromptBuilder
 
 import json
 from core.Multimodal import build_multimodal_input
+from prompts.prompt_builder import PromptStructure
+from services.appContext import AppContext
+
+
 
 class Step(BaseModel):
     step_number: int
@@ -30,8 +32,13 @@ class PlannerOutput(BaseModel):
     steps: list[Step]
     conversation_name: Optional[str] | None = None
 
+class PromptInput(BaseModel):
+    planner: PlannerOutput | None = None
+    is_multimodal: bool
+    context: PromptStructure
 
-async def Streamed_agent_response(dc:DiskCache, memory: Memory, db: MongoDB, cache: RedisCache, context: Mem0Context, user_input: str, hooks: dict[str, Callable] | None = None):
+
+async def Streamed_agent_response(app_context: AppContext, context: Mem0Context, user_input: str, hooks: dict[str, Callable] | None = None):
     """
     Process a user message through the agent and return the response
 
@@ -46,16 +53,10 @@ async def Streamed_agent_response(dc:DiskCache, memory: Memory, db: MongoDB, cac
         The agent's response as a string
     """
     try:
-        print(f"Starting Streamed_agent_response with input: {user_input}")
-        start = time.monotonic()
-        print(f"before creating agents: ;{time.monotonic() - start}")
-        agent = Agents(memory)
-        print(f"after creating agents: ;{time.monotonic() - start}")
-        print(f"before get_chat_history: ;{time.monotonic() - start}")
-        history = await cache.get_chat_history(db, context.conversation_id, context.user_id)
-        print(f"after get_chat_history: ;{time.monotonic() - start}")
-
+        
         # Find the last assistant message in this conversation
+        print("starting streaming")
+        history = await app_context.chatService.load_chat_history(context.conversation_id, context.user_id)
         last_assistant_message = None
         if history and len(history) > 0:
             for msg in reversed(history):
@@ -64,7 +65,6 @@ async def Streamed_agent_response(dc:DiskCache, memory: Memory, db: MongoDB, cac
                     last_assistant_message = msg
                     break
 
-        print(f"after finding last assistant message: ;{time.monotonic() - start}")
 
         # Restore agent state from the last assistant message in this conversation
         if last_assistant_message and hasattr(last_assistant_message, 'metadata') and 'current_agent' in last_assistant_message.metadata:
@@ -76,7 +76,6 @@ async def Streamed_agent_response(dc:DiskCache, memory: Memory, db: MongoDB, cac
             print(f"Starting new conversation {context.conversation_id} with main agent")
 
 
-        print(f"after restoring agent state: ;{time.monotonic() - start}")
 
         # Add the user message to the context
         user_message = ChatMessage(
@@ -89,25 +88,24 @@ async def Streamed_agent_response(dc:DiskCache, memory: Memory, db: MongoDB, cac
             metadata={"current_agent": context.current_agent}  # Store current agent in user message too
         )
         # Add to Redis cache
-        new_messge = await cache.add_message(db, conversation_id=context.conversation_id , user_id=context.user_id, session_id=context.session_id, message= user_message)
+        new_message = await app_context.chatService.add_message(user_message)
         if context.file_id:
-            await cache.load_cache_in_db(context.user_id, context.conversation_id, new_messge.id, context.file_id, db)
+            try:
+                await app_context.uploadService.finalize_upload(
+                    context.user_id,
+                    context.conversation_id,
+                    new_message.id,
+                    context.file_id
+                    )
+            except Exception as e:
+                print("error while finalizing upload: ", e)
 
-        print(f"after adding user message to cache: ;{time.monotonic() - start}")
-        userdescription = await db.prompt_settings.get_by_user_id(context.user_id)
+        userdescription = await app_context.userService.get_user_prompt_settings(context.user_id)
 
-        print(f"after getting user description: ;{time.monotonic() - start}")
+        starting_agent = agent_selector(context.current_agent, app_context.agents, userdescription)
 
-        if context.current_agent == "tutor_agent":
-            starting_agent = agent.tutor_agent(instructions=userdescription.__str__())
-        elif context.current_agent == "coding_agent":
-            starting_agent = agent.coding_agent(instructions=userdescription.__str__())
-        else:
-            starting_agent = agent.Main_agent(instructions=userdescription.__str__())
-
-        print(f"after creating starting agent: ;{time.monotonic() - start}")
         memories = await asyncio.to_thread(
-            memory.search,
+            app_context.memory.search,
             query=user_input,
             user_id=context.user_id,
             agent_id=context.current_agent,
@@ -115,49 +113,29 @@ async def Streamed_agent_response(dc:DiskCache, memory: Memory, db: MongoDB, cac
             limit=10
         )
 
-        print(f"after getting memories: ;{time.monotonic() - start}")
         full_prompt = build_full_prompt(history, memories,context.conversation_id, user_input, userdescription.__str__())
-        if context.file_id:
-            multimodal_prompt = build_multimodal_input(user_input, context.file_id, dc)
         formatted_prompt = format_prompt(full_prompt)
-        print(f"Full prompt built: {full_prompt.__str__()}")
+        process = PromptBuilder() 
+        process.add_system(formatted_prompt)
+
+
+        if context.file_id:
+            await process.add_image_from_disk(user_input, context.file_id, app_context.uploadService, detail="auto")
+        else: 
+            process.add_text(user_input)
+
+
+
+        full_prompt = process.build()
         run_config = RunConfig(
                 workflow_name="Memory Assistant Workflow",
                 trace_metadata={"user_id": context.user_id}
             )
-        
-        print(f"after creating run config: ;{time.monotonic() - start}")
-        
-        yield f"data: {json.dumps({"event": "planning"})}\n\n"
-        planner_prompt = await Runner.run(
-            starting_agent=Agent[Mem0Context](
-                name="Planner Agent",
-                instructions="""You are a planner agent. You are responsible for planning the response of the agent.
-                                You will have to make sure the agent doesnt repeat itself when talking to user
-                                You will be given a conversation history and a user message.
-                                You will need to plan the next step for the agent.
-                                You will need to decide which agent to handoff to.
-                                You will need to decide which handoff to use.
-                                you will need to decide the name of the conversation. if not clear set none
-                """,
-                model=Model,
-                output_type=PlannerOutput
-            ),
-            input=formatted_prompt,
-            context=context,
-            run_config=run_config,
-            hooks=hooks if hooks else None
-        )
-        yield f"data: {json.dumps({"event": "done planning"})}\n\n"
-        print(f"got file in prompts: {context.file_id if context.file_id else "i did not see it"}")
-
-        print(f"Planner prompt: {formatted_prompt + planner_prompt.__str__()}")
-
+                
         print("Starting streamed run...")
-        print("mulitmodal prompt: ",multimodal_prompt)
         result = Runner.run_streamed(
             starting_agent=starting_agent,
-            input=formatted_prompt + planner_prompt.__str__() if not context.file_id else multimodal_prompt,
+            input= full_prompt,
             context=context,
             run_config=run_config,
             hooks=hooks if hooks else None
@@ -188,14 +166,8 @@ async def Streamed_agent_response(dc:DiskCache, memory: Memory, db: MongoDB, cac
 
         print(f"Assistant message: {assistant_message.__str__()}")
 
-        # Add to Redis cache
-        await cache.add_message(db, conversation_id=context.conversation_id , user_id=context.user_id, session_id=context.session_id, message= assistant_message)
+        await app_context.chatService.add_message(assistant_message)
 
-        # Add both messages to the context's chat history
-        context.chat_history.append(user_message)
-        context.chat_history.append(assistant_message)
-
-        # Yield a final message to indicate completion
         yield "\n(Response complete)"
 
     except Exception as e:
@@ -204,6 +176,36 @@ async def Streamed_agent_response(dc:DiskCache, memory: Memory, db: MongoDB, cac
         import traceback
         traceback.print_exc()
         yield f"\nError: {error_msg}"
+
+
+async def planner(context: Mem0Context, user_message: str, hasAttachment: bool = False):
+    return await Runner.run(
+        starting_agent=Agent[Mem0Context](
+            name="Planner Agent",
+            instructions="""You are a planner agent. You are responsible for planning the response of the agent.
+                                You will have to make sure the agent doesn't repeat itself when talking to the user.
+                                You will be given a conversation history and a user message.
+                                You will need to plan the next step for the agent.
+                                You will need to decide which agent to hand off to.
+                                You will need to decide which handoff to use.
+                                You will need to decide the name of the conversation. If not clear, set none.
+                """,
+            model=Model,
+            output_type=PlannerOutput
+        ),
+        input=user_message + f"\n user uploaded attachment ",
+        context=context
+    )       
+
+
+def agent_selector(current_agent:str, agent, userdescription):
+    if current_agent == "tutor_agent":
+        return agent.tutor_agent(instructions=userdescription.__str__())
+    elif current_agent == "coding_agent":
+        return agent.coding_agent(instructions=userdescription.__str__())
+    else:
+        return agent.Main_agent(instructions=userdescription.__str__())
+
 
 
 def format_sse(data: Any, event: str = None):

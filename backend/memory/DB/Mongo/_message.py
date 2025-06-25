@@ -4,8 +4,8 @@ from typing import Dict, Any
 
 class MessageOps:
     async def create(self, message: ChatMessage):
-        await message.insert()
-        return message
+        new_message = await message.insert()
+        return new_message
 
     async def get_by_conversation_id(self, convo_id: str):
         return await ChatMessage.find(ChatMessage.conversation_id == convo_id).to_list()

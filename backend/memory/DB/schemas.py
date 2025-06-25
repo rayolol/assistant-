@@ -72,6 +72,7 @@ class FileMeta(Document):
     user_id: Union[str, PydanticObjectId, Link[Users]]
     conversation_id: Union[str, PydanticObjectId, Link[Conversations]]
     message_id: Union[str, PydanticObjectId, Link[ChatMessage]]
+    permanent_path: str
     file_metadata: FileDoc
     
 

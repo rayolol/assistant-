@@ -2,11 +2,13 @@ import fastapi
 from fastapi import File, UploadFile, Depends, HTTPException
 import uuid
 import os
-from api.utils.Dependencies import get_cache
+from api.utils.Dependencies import get_app_context
 from memory.Cache.Redis.redisCache import RedisCache
 from models.schemas import FileDoc
+from services.appContext import AppContext
 from pathlib import Path
 from memory.Cache.DiskCache.diskCache import DiskCache
+import traceback
 
 
 
@@ -16,7 +18,7 @@ def get_disk_cache():
     return DiskCache()
 
 @FileRouter.get("/file/metadata/{file_id}")
-async def get_file_data(file_id: str, dc = Depends(get_disk_cache)):
+async def get_file_data(file_id: str, appcontext:AppContext = Depends(get_app_context)):
     """
     Temporary function for frontend testing: Gets metadata about a file.
     Returns a JSON object matching the FileAttachmentSchema (id, name, type, url).
@@ -24,88 +26,45 @@ async def get_file_data(file_id: str, dc = Depends(get_disk_cache)):
     """
     try:
         # Retrieve the file path from the DiskCache (assuming it stores paths now)
-        file_path = dc.cache.get(file_id)
+        file_meta = await appcontext.uploadService.get_file_metadata(file_id)
 
-        if not file_path or not os.path.exists(file_path):
+        if not file_meta:
             raise HTTPException(status_code=404, detail=f"File with ID {file_id} not found in cache or on disk.")
-
-        file_name = os.path.basename(file_path)
         
-        # Simple media type inference based on file extension
-        file_type = "application/octet-stream" # Default
-        if "." in file_name:
-            ext = file_name.split(".")[-1].lower()
-            if ext in ["jpg", "jpeg", "png", "gif", "bmp", "webp"]:
-                file_type = f"image/{ext}"
-            elif ext == "pdf":
-                file_type = "application/pdf"
-            elif ext == "txt":
-                file_type = "text/plain"
-            # Add more types as needed
-
-        # Construct the URL for fetching the actual file content.
-        # This assumes your FastAPI app is mounted at the root and this router is `/`.
-        # If your FastAPI app has a prefix, adjust the URL accordingly.
-        # For local development, it might be http://localhost:8001/file/content/{file_id}
-        # The frontend's `axios.instance` uses `baseURL`, so `/file/content/{file_id}` is correct relative path.
-        content_url = f"/file/content/{file_id}"
-
-        return {
-            "id": file_id,
-            "name": file_name,
-            "type": file_type,
-            "url": content_url
-        }
-
+        return file_meta
     except HTTPException as he:
         # Re-raise HTTPExceptions directly
         raise he
     except Exception as e:
         # Catch any other unexpected errors and return a 500
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
 @FileRouter.get("/file/content/{file_id}")
-async def get_file(file_id: str, dc = Depends(get_disk_cache)):
+async def get_file(file_id: str, appcontext: AppContext = Depends(get_app_context)):
     try:
 
-        content = dc.Load(file_id)
+        content = await appcontext.uploadService.get_file_content(file_id)
         return fastapi.responses.Response(content=content, media_type="application/octet-stream")
     
     except Exception as e:
-        raise HTTPException(status_code=500, detail=e)
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
     
 
 @FileRouter.post("/files/upload") 
 async def upload_file(
     file: UploadFile = File(...),
-    dc: DiskCache = Depends(get_disk_cache),
-    cache: RedisCache = Depends(get_cache)
+    appcontext:AppContext = Depends(get_app_context)
+    
 ): 
     try:
-        file_id = uuid.uuid4()
 
-        # Sanitize filename for storing and returning to frontend
-        safe_filename = "".join(c for c in file.filename if c.isalnum() or c in ('.', '_', '-')).rstrip()
-        if not safe_filename:
-            safe_filename = f"uploaded_file_{file_id}" 
-
-
-        content = await file.read()
-        fileDoc = FileDoc(
-            file_id=str(file_id),
-            file_name=safe_filename,
-            file_type=file.content_type,
-            file_size=len(content),
-            file_url= f"/file/content/{file_id}"
-        )
-
-        await cache.cache_file_metadata(file_id, fileDoc)
-        dc.Write(file.filename, file_id, content)
-
-        return fileDoc
+        return await appcontext.uploadService.upload_temp(await file.read(), file.filename, file.content_type)
 
     except Exception as e:
         print(f"Error during file upload to temporary disk cache: {e}") 
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"File upload failed: {e}")
         

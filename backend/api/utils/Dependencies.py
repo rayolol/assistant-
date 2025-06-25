@@ -7,12 +7,6 @@ from mem0 import Memory
 from settings.settings import MEMORY_Config
 from models.models import ChatSession
 
-async def get_db(request: Request):
-    return request.app.state.db
-   
-async def get_cache(request: Request):
-    return request.app.state.cache
-   
 
 async def flush_to_DB(session: ChatSession, cache: RedisCache, db: MongoDB):
     """Flush chat history from Redis to MongoDB"""
@@ -23,8 +17,8 @@ async def flush_to_DB(session: ChatSession, cache: RedisCache, db: MongoDB):
         await cache.flush_cache_to_DB(session, db)
 
 
-async def get_AI_Memory(request: Request): 
-    return request.app.state.memory
+async def get_app_context(request: Request): 
+    return request.app.state.AppContext
 
 
 

@@ -5,6 +5,7 @@ import { useMessageHandling } from '@/app/hooks/useMessageHandling';
 import { PlusIcon, SendIcon, Loader2Icon } from 'lucide-react';
 import { FileUpload } from '@/components/chat/FileUploadComponent';  // lowercase 'f'
 import { FileUploadResponse } from '@/components/chat/fileUpload';
+import Image from 'next/image';
 
 const ChatInput = () => {
   const [input, setInput] = useState('');
@@ -36,6 +37,7 @@ const ChatInput = () => {
     setAttachedFileURL(null);
     setFileName(null);
     setFileStatus('idle');
+    setFileId(null);
   };
 
   const handlePlusClick = () => {
@@ -79,6 +81,9 @@ const ChatInput = () => {
             {fileName && (
               <div className="flex items-center space-x-2 mt-2">
                 <span className="text-sm text-gray-500">Attached: {fileName}</span>
+                {attachedFileURL && (
+                  <Image src={attachedFileURL} alt={fileName ?? 'Attached file'} height={70} width={70} />
+                )}
                 <button
                   type="button"
                   onClick={removeAttachedFile}

@@ -5,11 +5,12 @@ import requests
 from typing import Optional
 from models.models import ChatRequest
 from models.schemas import ChatMessageDTO
-from api.utils.Dependencies import get_db, get_cache, get_AI_Memory
+from api.utils.Dependencies import get_app_context
 from memory.Cache.DiskCache.diskCache import DiskCache
 from memory.DB.Mongo.MongoDB import MongoDB
 from memory.Cache.Redis.redisCache import RedisCache
 import traceback
+from services.appContext import AppContext
 from mem0 import Memory
 from beanie import PydanticObjectId
 from datetime import datetime
@@ -40,10 +41,8 @@ async def stream_chat(
     conversation_id: str,
     message: str,
     fileId: Optional[str] = Query(None),
-    db: MongoDB = Depends(get_db),
-    cache: RedisCache = Depends(get_cache),
-    memory: Memory = Depends(get_AI_Memory),
-    dc: DiskCache = Depends(lambda: DiskCache())
+    appcontext: AppContext = Depends(get_app_context)
+    
 ) -> StreamingResponse:
     try:
         print(f"Starting SSE stream for user {user_id}, session {session_id}, conversation {conversation_id}")
@@ -58,12 +57,9 @@ async def stream_chat(
         async def event_generator():
             try:
                 async for chunk in Streamed_agent_response(
-                    memory=memory,
-                    db=db,
-                    cache=cache,
+                    app_context=appcontext,
                     context=context,
                     user_input=message,
-                    dc=dc
                 ):
                     if chunk:  # Only send non-empty chunks
                         print(f"Sending chunk: {chunk}")
@@ -93,7 +89,7 @@ async def stream_chat(
     
 
 @MessagesRouter.get("/chat/history/{conversation_id}/{user_id}/{session_id}")
-async def send_chat_history(conversation_id: str,session_id: str, user_id: str, cache: RedisCache = Depends(get_cache), db: MongoDB = Depends(get_db)):
+async def send_chat_history(conversation_id: str,session_id: str, user_id: str, appcontext:AppContext = Depends(get_app_context)):
     """Endpoint to retrieve chat history for a given conversation"""
     if not conversation_id or not user_id:
         print("conversation_id and user_id are required")
@@ -102,13 +98,10 @@ async def send_chat_history(conversation_id: str,session_id: str, user_id: str, 
         # Handle guest user
         print(f"Getting chat history for conversation_id={conversation_id}, user_id={user_id}")
         # Get chat history from cache or database
-        history = await cache.get_chat_history(db, conversation_id, user_id)
+        history = await appcontext.chatService.load_chat_history(conversation_id, user_id)
 
         if not history or len(history) == 0:
             print("No history found in cache, trying database directly")
-
-        if not history:
-            print("No history found in database either")
             return []
 
         # Filter messages for this conversation

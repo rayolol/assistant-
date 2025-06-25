@@ -52,9 +52,17 @@ export const PromptSettingsSchema = z.object({
   export type Promptsettings = z.infer<typeof PromptSettingsSchema>;
 
 export const FileAttachmentSchema = z.object({
-    url: z.string(),
-    name: z.string().optional(),
-    type: z.string().optional(),
-});
+    file_id: z.string(),
+    file_type: z.string().optional(),
+    file_size: z.number().optional(),
+    file_name: z.string().optional(),
+    file_url: z.string(),
+}).transform((data) =>({
+    id: data.file_id,
+    type: data.file_type,
+    size: data.file_size,
+    name: data.file_name,
+    url: data.file_url
+}));
 
 export type FileAttachment = z.infer<typeof FileAttachmentSchema>;

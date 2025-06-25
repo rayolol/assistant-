@@ -3,7 +3,8 @@ from fastapi import Depends, HTTPException, Request
 from models.schemas import UserDTO
 from memory.DB.Mongo.MongoDB import MongoDB
 from memory.Cache.Redis.redisCache import RedisCache
-from api.utils.Dependencies import get_db, get_cache
+from api.utils.Dependencies import get_app_context
+from services.appContext import AppContext
 import traceback
 
 UserRouter = fastapi.APIRouter()
@@ -15,7 +16,7 @@ UserRouter = fastapi.APIRouter()
 @UserRouter.post("/users/get-user-id")
 async def get_user_info(
     request: Request,
-    db: MongoDB = Depends(get_db)
+    appcontext: AppContext = Depends(get_app_context)
 ):
     """Endpoint to retrieve user information"""
     try:
@@ -31,12 +32,8 @@ async def get_user_info(
 
         # Handle guest user
         #TODO: add JWT for real auth
-        user = await db.user.get_user_by_email(email=email)
-        #TODO: remove later
-        if not user:
-            user = await db.user.create_user(username=username, email=email)
-        # user = await db.user.get_user_by_username(username=username)
-
+        user = await appcontext.userService.get_user_data(email, username)
+        
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
         
@@ -51,7 +48,7 @@ async def get_user_info(
         raise HTTPException(status_code=500, detail=str(e))
 
 @UserRouter.post("/users/create-user")
-async def create_user(request: Request, db: MongoDB = Depends(get_db)):
+async def create_user(request: Request, appcontext: AppContext = Depends(get_app_context)):
     """Get or create a guest user"""
 
     body = await request.json()
@@ -64,7 +61,7 @@ async def create_user(request: Request, db: MongoDB = Depends(get_db)):
     if not username and not email:
         raise HTTPException(status_code=400, detail="Username or email is required")
 
-    user = await db.user.create_user(username=username, email=email)
+    user = await appcontext.userService.db.user.create_user(username=username, email=email)
     if not user:
         raise HTTPException(status_code=400, detail="User not created")
     else:
