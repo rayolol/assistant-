@@ -20,3 +20,7 @@ class conversationService:
             conversations = [conversations]
         
         return conversations
+    
+    async def update_conversation(self, convo:Conversations):
+        return await self.db.conversation.update(convo)
+        

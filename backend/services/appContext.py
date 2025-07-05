@@ -15,7 +15,6 @@ from settings.settings import MEMORY_Config
 from mem0 import Memory
 
 
-
 class AppContext:
     #TODO: add app config later
     def __init__ (self, app_config = None):

@@ -3,7 +3,7 @@ import asyncio
 import sys
 import os
 import time
-from typing import Any
+from typing import Any, List 
 from prompts.prompt_builder import build_full_prompt
 from agents import Runner, RunConfig, Agent
 from openai.types.responses import ResponseTextDeltaEvent
@@ -16,6 +16,7 @@ from pydantic import BaseModel
 from prompts.prompt_builder import format_prompt
 from services.uploadFileService import uploadService
 from modules.prompt_preprocessor import PromptBuilder
+from agents import ItemHelpers
 
 import json
 from core.Multimodal import build_multimodal_input
@@ -24,18 +25,7 @@ from services.appContext import AppContext
 
 
 
-class Step(BaseModel):
-    step_number: int
-    step_description: str
-    NextAgent: Literal["main_agent", "coding_agent", "tutor_agent", "none"]
-class PlannerOutput(BaseModel):
-    steps: list[Step]
-    conversation_name: Optional[str] | None = None
 
-class PromptInput(BaseModel):
-    planner: PlannerOutput | None = None
-    is_multimodal: bool
-    context: PromptStructure
 
 
 async def Streamed_agent_response(app_context: AppContext, context: Mem0Context, user_input: str, hooks: dict[str, Callable] | None = None):
@@ -129,7 +119,8 @@ async def Streamed_agent_response(app_context: AppContext, context: Mem0Context,
         full_prompt = process.build()
         run_config = RunConfig(
                 workflow_name="Memory Assistant Workflow",
-                trace_metadata={"user_id": context.user_id}
+                trace_metadata={"user_id": context.user_id},
+                
             )
                 
         print("Starting streamed run...")
@@ -138,7 +129,8 @@ async def Streamed_agent_response(app_context: AppContext, context: Mem0Context,
             input= full_prompt,
             context=context,
             run_config=run_config,
-            hooks=hooks if hooks else None
+            hooks=hooks if hooks else None,
+            max_turns=20
             )
 
         print("Stream run initiated, processing events...")
@@ -147,8 +139,23 @@ async def Streamed_agent_response(app_context: AppContext, context: Mem0Context,
             if event.type == "raw_response_event" and isinstance(event.data, ResponseTextDeltaEvent):
                 chunk = event.data.delta  # may contain "\n"
                 response_text += chunk     # if you still need to build the full response
-                yield f"data: {json.dumps({"chunk": chunk})}\n\n"
-            
+                yield chunk
+
+            elif event.type == "run_item_stream_event":
+                if event.item.type == "tool_call_item":
+                    print("-- Tool was called")
+                    print("event", event.item.raw_item)
+                elif event.item.type == "tool_call_output_item":
+                    print(f"-- Tool output: {event.item.output}")
+                    yield f"\n\n:::event\n{{'title'=\"{event.item.raw_item}\", 'content'=\"{event.item.output}\"}}\n:::\n\n"
+                    
+                elif event.item.type == "message_output_item":
+                    print(f"-- Message output:\n {ItemHelpers.text_message_output(event.item)}")
+                else:
+                    pass  # Ignore other event types
+
+            elif event.type == "agent_updated_stream_event":
+                print("event")
 
         print(f"Finished streaming, total response length: {len(response_text)}")
         
@@ -178,24 +185,7 @@ async def Streamed_agent_response(app_context: AppContext, context: Mem0Context,
         yield f"\nError: {error_msg}"
 
 
-async def planner(context: Mem0Context, user_message: str, hasAttachment: bool = False):
-    return await Runner.run(
-        starting_agent=Agent[Mem0Context](
-            name="Planner Agent",
-            instructions="""You are a planner agent. You are responsible for planning the response of the agent.
-                                You will have to make sure the agent doesn't repeat itself when talking to the user.
-                                You will be given a conversation history and a user message.
-                                You will need to plan the next step for the agent.
-                                You will need to decide which agent to hand off to.
-                                You will need to decide which handoff to use.
-                                You will need to decide the name of the conversation. If not clear, set none.
-                """,
-            model=Model,
-            output_type=PlannerOutput
-        ),
-        input=user_message + f"\n user uploaded attachment ",
-        context=context
-    )       
+
 
 
 def agent_selector(current_agent:str, agent, userdescription):

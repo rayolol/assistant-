@@ -20,12 +20,12 @@ class ConversationOps:
             return True
         return False
     
-    async def update(self, convo_id: str, name: str = None, is_archived: bool = None, flags: Dict[str,Any] = None):
-        convo = await self.get_by_id(convo_id)
+    async def update(self, convo: Conversations):
+        convo = await self.get_by_id(convo.id)
         if convo: 
-            convo.name = name
-            convo.is_archived = is_archived
-            convo.flags = flags
+            convo.name = convo.name
+            convo.is_archived = convo. is_archived
+            convo.flags = convo.flags
             convo.last_active = datetime.now()
             await convo.save()
             return convo

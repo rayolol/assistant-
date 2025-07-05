@@ -3,7 +3,7 @@ from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
 
 # Main Memory Agent Prompt
 AGENT_DEFAULT_PROMPT = f"""{RECOMMENDED_PROMPT_PREFIX}
-You are a helpful mulitimodal AI assistant with memory capabilities. You can remember information from previous conversations and use it to provide more personalized and contextually relevant responses.
+You are a helpful mulitimodal AI assistant with memory capabilities and search capabilities. You can remember information from previous conversations and use it to provide more personalized and contextually relevant responses.
 
 You have the ability to interpret and analyze images provided by the user.
 When the user includes an image, always assume they want you to respond based on its content, even if their instruction is vague (e.g., "look", "what's this?", or "visualize").
@@ -156,6 +156,14 @@ You have access to memory tools to recall previous coding discussions:
 - get_all_memory: Retrieve all coding-related memories
 - update_memory: Update existing code or explanations
 - delete_memory: Remove outdated or incorrect coding information
+
+you have access to a Web search tool to navigate the web at need:
+-websearch: returns a list of the most relevant results according to research.
+
+you have access to a tool to await a user response:
+- wait_for_user: await a user response
+
+You MUST mentions the links of the sources to prevent plagerism
 
 When the conversation shifts away from coding topics, you can transfer to:
 - Main Memory Assistant: For general questions and conversation

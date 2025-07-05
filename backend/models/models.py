@@ -1,7 +1,10 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, PrivateAttr
 from beanie import Document, Link, PydanticObjectId
 from datetime import datetime
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Any, Optional, Union, TYPE_CHECKING
+if TYPE_CHECKING:
+    from fastapi import WebSocket
+    from services.appContext import AppContext
 
 
 
@@ -72,6 +75,9 @@ class Mem0Context(BaseModel):
     tool_usage_history: List[ToolUsageRecord] = []
     response_metrics: Dict[str, Any] = {}
     chat_history: List[ChatMessage] = []
+    _websocket: Optional["WebSocket"] = PrivateAttr(default=None)
+    _appContext: Optional["AppContext"] = PrivateAttr(default=None)
+
     
     def to_chat_session(self) -> "ChatSession":
         """convert context to chat session"""

@@ -24,7 +24,19 @@ async def UpdatePromptSettings(
     try:
         if not request.user_id:
             raise HTTPException(status_code=400, detail="user_id is required")
-        info = await appcontext.userService.update_user_prompt_settings(user_id)
+        
+        ps = PromptSettings(
+            id = request.id,
+            user_id= request.user_id,
+            display_name=request.display_name,
+            custom_prompt=request.custom_prompt,
+            occupation=request.occupation,
+            interests=request.interests,
+            about_me=request.about_me,
+            updated_at=request.updated_at
+
+        )
+        info = await appcontext.userService.update_user_prompt_settings(user_id, ps)
         
         if info:
             return PromptSettingsDTO(

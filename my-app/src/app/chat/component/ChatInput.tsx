@@ -6,18 +6,30 @@ import { PlusIcon, SendIcon, Loader2Icon } from 'lucide-react';
 import { FileUpload } from '@/components/chat/FileUploadComponent';  // lowercase 'f'
 import { FileUploadResponse } from '@/components/chat/fileUpload';
 import Image from 'next/image';
+import { useUserStore } from '@/app/hooks/StoreHooks/UserStore';
 
-const ChatInput = () => {
+interface chatinputProps {
+  isStreaming: boolean;
+  sendMessage: (conversationId:string, message:string, fileId?:string) => void;
+  currentConversationId: string | null;
+  response: string;
+  awaitingEvent: boolean;
+  sendUserFeedback: (message:string) => void
+}
+
+const ChatInput = ({ isStreaming, sendMessage, currentConversationId, response, awaitingEvent, sendUserFeedback }: chatinputProps) => {
   const [input, setInput] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const { isStreaming, sendMessage } = useMessageHandling();
 
   const [attachedFileURL, setAttachedFileURL] = useState<string | null>(null);
   const [fileName, setFileName]           = useState<string | null>(null);
   const [fileStatus, setFileStatus]       = useState<'idle'|'uploading'|'uploaded'|'error'>('idle');
   const [fileId, setFileId] = useState<string | null>(null);
 
+  useEffect(() => {
+    console.log("response in chatinput: ",response )
+  }, [response])
   // When FileUpload finishes, grab the URL and file name
   const handleUploadComplete = (file: FileUploadResponse) => {
     setAttachedFileURL(file.file_url);
@@ -25,13 +37,18 @@ const ChatInput = () => {
     setFileId(file.file_id)
     setFileStatus('uploaded');
   };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() && !attachedFileURL) return;
 
+    if(awaitingEvent) {
+      sendUserFeedback(input.trim());
+      console.log("sent awaiting event")
+      return;
+    }
     // send text and attachment together
-    await sendMessage(input.trim(), fileId);
+    sendMessage(currentConversationId, input.trim(), fileId );
+    console.log("currentconversationId:", currentConversationId);
     // reset
     setInput('');
     setAttachedFileURL(null);
@@ -73,7 +90,7 @@ const ChatInput = () => {
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => e.key==='Enter' && !e.shiftKey && handleSubmit(e)}
               placeholder="Type your message..."
-              disabled={isStreaming}
+              disabled={(isStreaming && !awaitingEvent)}
               rows={1}
               className="w-full border-none resize-none focus:outline-none text-foreground min-h-[20px] max-h-[200px]"
             />
@@ -119,7 +136,7 @@ const ChatInput = () => {
 
             <button
               type="submit"
-              disabled={(!input.trim() && !attachedFileURL) || isStreaming || fileStatus==='uploading'}
+              disabled={(!input.trim() && !attachedFileURL) || (!awaitingEvent) || fileStatus==='uploading'}
               className={`rounded-full p-1 m-1 ${
                 (!input.trim() && !attachedFileURL) || isStreaming || fileStatus==='uploading'
                   ? 'bg-gray-300 cursor-not-allowed'

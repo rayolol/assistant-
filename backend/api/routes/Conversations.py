@@ -1,7 +1,7 @@
 import fastapi
 from models.schemas import ConversationDTO
 from fastapi import Depends, HTTPException, Request
-from memory.DB.Mongo.MongoDB import MongoDB
+from memory.DB.schemas import Conversations
 from memory.Cache.Redis.redisCache import RedisCache
 import traceback
 from services.appContext import AppContext
@@ -71,7 +71,7 @@ async def create_conversation(
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
-@ConversationsRouter.delete("/chat/conversations/{conversation_id}")
+@ConversationsRouter.delete("/chat/delete-conversations/{conversation_id}")
 async def delete_conversation(
     conversation_id: str,
     appcontext: AppContext = Depends(get_app_context)
@@ -90,9 +90,32 @@ async def delete_conversation(
         raise HTTPException(status_code=500, detail=str(e))
     
 
-#TODO Update conversation wiht optional name update 
+@ConversationsRouter.put("/chat/update-conversations/{conversation_id}")
+async def update_conversation( request: ConversationDTO, conversation_id: str, appcontext: AppContext = Depends(get_app_context)):
+    try:
+        if not conversation_id:
+            raise HTTPException(status_code=400, detail="conversation_id is required")
+        
+        convo = Conversations(
+            id = conversation_id,
+            user_id= request.user_id,
+            session_id=request.session_id,
+            name = request.name,
+            started_at=request.started_at,
+            last_active=request.last_active,
+            is_archived=request.is_archived,
+            flags=request.flags
+        )
+        if await appcontext.conversationService.update_conversation(convo):
+            return {"message": "conversation updated"}
+
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+        
+    
+
 
 #TODO Get conversation by id
 
-#TODO Get conversation by user id
 

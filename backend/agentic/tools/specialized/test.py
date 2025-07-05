@@ -1,23 +1,10 @@
-from agents import function_tool, RunContextWrapper
-from models.models import ToolUsageRecord
-from models.models import Mem0Context
-from settings.settings import MEMORY_Config
-from typing import List, Dict, Any
-from pydantic import BaseModel
-from mem0 import Memory
 import requests 
-import traceback
-import asyncio
+import json
 
 
 API_KEY = "sk-e2c8216edd6945be907260a07fc3cccf"
-class SearchTool: 
-    def __init__(self): 
-        pass
 
-    @staticmethod
-    @function_tool
-    def websearch(context: RunContextWrapper[Mem0Context], query: str, count: int = 2):
+def websearch(query: str, count: int = 10):
         """
         Perform a web search using the LangSearch API.
 
@@ -48,9 +35,13 @@ class SearchTool:
 
             resp = requests.post(url, headers=headers, json= payload)
             resp.raise_for_status()
-            print(resp.json())
+            res = resp.json()
+            print(json.dumps(res, indent=4))
 
             return resp.json()
         except Exception as e:
             print("error in websearch tool",e)
             return {"error": "search tool unavailable"}
+
+
+print(websearch(query="image of the christ statue in brazil", count=1))

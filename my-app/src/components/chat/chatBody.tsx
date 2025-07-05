@@ -29,6 +29,10 @@ export const ChatBody = ({messages, isStreaming, response, username }: ChatBodyP
         };
     }, []);
 
+    useEffect(() => {
+        console.log("response in chatbody: ", response)
+    }, [response])
+
    
     // Clear the chatEvent state when streaming is done
     useEffect(() => {

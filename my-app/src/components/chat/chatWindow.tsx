@@ -1,17 +1,26 @@
 "use client";
 import { useMessageHandling } from '@/app/hooks/useMessageHandling';
-import React, { useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { ChatBody }from './chatBody';
 import { useAutoScroll } from '@/app/hooks/useAutoScroll';
 import { useUserStore } from '@/app/hooks/StoreHooks/UserStore';
 import { ErrorCard } from '@/components/utils/ErrorCard';
 
-export const ChatWindow = () => {
-  const { messages, isStreaming, response, error} = useMessageHandling();
+interface ChatWindowProps {
+  messages: any,
+  isStreaming: boolean,
+  response: string,
+  error: any
+}
+
+export const ChatWindow = ({ messages, isStreaming, response, error}: ChatWindowProps) => {
   const { username } = useUserStore();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    console.log("response in chatwindow: ",response )
+  }, [response])
   useAutoScroll(messagesEndRef, isStreaming);
 
   return (  

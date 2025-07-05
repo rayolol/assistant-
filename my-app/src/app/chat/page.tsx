@@ -8,31 +8,27 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useUserStore } from '../hooks/StoreHooks/UserStore';
 import { AuthRedirect } from '@/components/utils/AuthRedirectCard';
 import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
+import { useMessageHandling } from '../hooks/useMessageHandling';
+import { useMessageStore } from '../hooks/StoreHooks/useMessageStore';
 
 const ChatPage = () => {
-  const { isAuthenticated } = useUserStore();
+  const { isAuthenticated, userId, sessionId } = useUserStore();
+  const { currentConversationId } = useMessageStore();
   const [mounted, setMounted] = useState(false);
   const { state } = useSidebar();
-  
-  // Use useCallback for event handlers
-  const handleMount = useCallback(() => {
-    setMounted(true);
-    
-    // Clean up function to prevent memory leaks
-    return () => {
-      // Clean up any event listeners or subscriptions
-    };
-  }, []);
-  
-  useEffect(() => {
-    handleMount();
-  }, [handleMount]);
+  const { messages, response, sendMessage, isStreaming, error, awaitingEvent, sendUserFeedback } = useMessageHandling();
 
-  // Use useMemo for expensive calculations
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const pageContent = useMemo(() => {
-    if (!isAuthenticated) return <AuthRedirect/>;
+    if (!isAuthenticated) return <AuthRedirect />;
+    if (!userId || !sessionId) return <>loading</>;
     if (!mounted) return null;
-    
+
+
     return (
       <div className="flex h-screen w-full bg-background flex-1 text-foreground overflow-hidden">
         <SidebarContainer/>
@@ -45,12 +41,12 @@ const ChatPage = () => {
 
           {/* Main content */}
           <main className="flex flex-col h-full overflow-y-auto">
-             <ChatWindow/>
+             <ChatWindow messages ={messages} isStreaming = {isStreaming} response={response}  error= {error}/>
           </main>
 
          {/* Message input area */}
          <footer className="w-full px-2 sm:px-4 sm:pb-4 pt-2">
-            <ChatInput/>
+            <ChatInput currentConversationId={currentConversationId} isStreaming={isStreaming} sendMessage={sendMessage} response={response} awaitingEvent={awaitingEvent} sendUserFeedback = {sendUserFeedback}/>
           </footer>
         </ContentContainer>
 
@@ -60,7 +56,11 @@ const ChatPage = () => {
         </aside>
       </div>
     );
-  }, [isAuthenticated, mounted, state]);
+  }, [currentConversationId, error, isAuthenticated, isStreaming, messages, mounted, response, sendMessage, state]);
+
+  if (!isAuthenticated) return <AuthRedirect />;
+  if (!userId || !sessionId) return <>loading</>;
+  if (!mounted) return null;
 
   return pageContent;
 }

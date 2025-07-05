@@ -14,6 +14,8 @@ from settings.settings import Model, settings as S
 from mem0 import Memory
 import os
 from ..tools.memory.default_tools import MemoryTools as MT, Mem0Context
+from ..tools.specialized.searchTool import SearchTool
+from ..tools.core.baseTools import BaseTool
 from prompts import prompts as P
 from dotenv import load_dotenv
 import inspect
@@ -28,6 +30,11 @@ class Agents:
         self.settings = ModelSettings(tool_choice = "auto")# parallel_tool_calls = True)
         self.memory = memory
         MT(memory)
+        SearchTool()
+        BaseTool(
+            ["add_to_memory", "search_memory", "get_all_memory", "update_memory", "delete_memory","Planner"," websearch","wait_for_user"],
+            ["coding_agent", "main_agent", "tutor_agent"]
+            )
         
 
         # Create a single shared instance of memory tools
@@ -36,7 +43,10 @@ class Agents:
             MT.search_memory,
             MT.get_all_memory,
             MT.update_memory,
-            MT.delete_memory
+            MT.delete_memory,
+            SearchTool.websearch,
+            BaseTool.planner,
+            BaseTool.wait_for_user_feedback
         ]
 
         # Initialize handoff functions first

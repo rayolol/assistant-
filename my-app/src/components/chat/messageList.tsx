@@ -1,6 +1,7 @@
 import { Message } from '@/app/types/schemas';
 import { AssistantMessage } from './AssistantMessage';
 import { UserMessage } from './UserMessage';
+import { SystemsMessage } from './systemsMessage';
 import React, { useEffect, useRef, useState, memo } from 'react';
 
 interface MessageListProps {
@@ -36,8 +37,10 @@ export const MessageList = memo(({ messages }: MessageListProps) => {
                             ref={isLastMessage ? lastMessageRef : null} 
                         />
                     );
-                } else {
+                } else if (message.role === 'assistant') {
                     return <AssistantMessage key={index} message={message.content} />;
+                } else {
+                    return <SystemsMessage key={index} message={message} />
                 }
             })}
         </div>

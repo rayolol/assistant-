@@ -1,13 +1,14 @@
 import fastapi
-from fastapi import Depends, HTTPException, Query
+from fastapi import Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 import requests
+
 from typing import Optional
 from models.models import ChatRequest
 from models.schemas import ChatMessageDTO
 from api.utils.Dependencies import get_app_context
 from memory.Cache.DiskCache.diskCache import DiskCache
-from memory.DB.Mongo.MongoDB import MongoDB
+from memory.DB.schemas import ChatMessage
 from memory.Cache.Redis.redisCache import RedisCache
 import traceback
 from services.appContext import AppContext
@@ -16,12 +17,29 @@ from beanie import PydanticObjectId
 from datetime import datetime
 from core.agent_prompts import Streamed_agent_response
 from models.models import Mem0Context, ChatSession
+import json
 import asyncio
 
 
 
 
 MessagesRouter = fastapi.APIRouter()
+
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: dict[str, WebSocket] = {}
+
+    async def connect(self, websocket: WebSocket, connection_id: str):
+        await websocket.accept()
+        self.active_connections[connection_id] = websocket
+
+    async def disconnect(self, websocket: WebSocket, connection_id: str):
+        if connection_id in self.active_connections:
+            del self.active_connections[connection_id]
+
+    
+
+manager = ConnectionManager()   
 
 
 #FIXME: pydantic object mess
@@ -33,8 +51,112 @@ session.headers.update({
     "Keep-Alive": "timeout=60, max=1000"
 })
 
+@MessagesRouter.websocket("/ws/chat/{user_id}/{session_id}")
+async def websocket_chat(
+        websocket: WebSocket,
+        user_id: str,
+        session_id: str
+):
+    connection_id = f"{user_id}-{session_id}"
 
-@MessagesRouter.get("/chat/{user_id}/{session_id}/{conversation_id}")
+    try:
+        await manager.connect(websocket, connection_id)
+
+        appcontext: AppContext = websocket.app.state.AppContext
+        print(f"WebSocket connected for user {user_id}, session {session_id}")
+        
+        while True:
+            data = await websocket.receive_text()
+            message_data = json.loads(data)
+
+            message = message_data.get("message")
+            fileId = message_data.get("fileId")
+            conversation_id = message_data.get("conversationId")
+
+            print("loaded message data: ", message_data)
+            print("conversation_id", conversation_id)
+
+
+            if not conversation_id:
+                await websocket.send_text(json.dumps({
+                    "type": "error",
+                    "message": "conversationId is required"
+                }))
+                continue
+
+
+
+            if not message:
+                await websocket.send_text(json.dumps({
+                    "type": "error",
+                    "message": "message is required"
+                }))
+                continue
+
+            context = Mem0Context(
+                user_id=user_id,
+                session_id=session_id,
+                conversation_id=conversation_id,
+                file_id=fileId if fileId else None,
+            )
+            context._websocket = websocket
+            context._appContext = appcontext
+
+            try: 
+                await websocket.send_text(json.dumps({
+                    "type": "start",
+                    "conversationId": conversation_id,
+                    "message": "Starting response generation..."
+                }))
+                
+                # Stream the response
+                async for chunk in Streamed_agent_response(
+                    app_context=appcontext,
+                    context=context,
+                    user_input=message,
+                ):
+                    print(f"Sending chunk: {repr(chunk)}")
+                    if chunk:
+                        await websocket.send_text(json.dumps({
+                                "type": "chunk",
+                                "conversationId": conversation_id,
+                                "data": {"chunk": chunk}
+                        }))
+                        
+                    await asyncio.sleep(0.05)
+                        
+                await websocket.send_text(json.dumps({
+                    "type": "complete",
+                    "conversationId": conversation_id,
+                    "message": "Response complete"
+                }))
+                
+            except Exception as e:
+                print(f"Error in WebSocket chat: {str(e)}")
+                await websocket.send_text(json.dumps({
+                    "type": "error",
+                    "conversationId": conversation_id,
+                    "message": f"Error: {str(e)}"
+                }))
+    except WebSocketDisconnect:
+        print(f"WebSocket disconnected for {connection_id}")
+        await manager.disconnect(websocket, connection_id)
+    except Exception as e:
+        print(f"Error in WebSocket endpoint: {str(e)}")
+        await manager.disconnect(websocket, connection_id)
+        try:
+            await websocket.send_text(json.dumps({
+                "type": "error",
+                "message": f"Connection error: {str(e)}"
+            }))
+        except:
+            pass
+    finally:
+        await manager.disconnect(websocket, connection_id)
+                
+
+
+#@MessagesRouter.get("/chat/{user_id}/{session_id}/{conversation_id}")
 async def stream_chat(
     user_id: str,
     session_id: str,
@@ -62,7 +184,6 @@ async def stream_chat(
                     user_input=message,
                 ):
                     if chunk:  # Only send non-empty chunks
-                        print(f"Sending chunk: {chunk}")
                         yield chunk
                         await asyncio.sleep(0.05)
                         
@@ -129,5 +250,24 @@ async def send_chat_history(conversation_id: str,session_id: str, user_id: str, 
         raise HTTPException(status_code=500, detail=str(e))
     
 
-#TODO: add update message
+# @MessagesRouter.put("/chat/message/{messsage_id}")
+# async def update_message(request: ChatMessageDTO, message_id: str, appcontext: AppContext):
+#     if not message_id:
+#         raise HTTPException(status_code=400, detail="message_id is required")
+    
+#     msg = ChatMessage(
+#         id = request.id,
+#         conversation_id= request.conversation_id,
+#         user_id=request.user_id,
+#         session_id= request.session_id,
+#         timestamp=request.timestamp,
+#         content = request.content,
+#         role= request.role,
+#         file_id = request.file_id,
+#         metadata=request.metadata,
+#     )
+    
+
+
+
 #TODO: add delete message

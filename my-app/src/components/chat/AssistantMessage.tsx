@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, startTransition } from 'react';
 import { MarkdownRenderer,StreamingMarkdownRenderer } from '@/lib/renderer';
 
 
