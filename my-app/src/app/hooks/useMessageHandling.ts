@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState, startTransition, useMemo } from "react";
-import eventEmitter from "@/lib/EventEmitter";
+import eventEmitter from "@/services/EventEmitter";
 import { Message } from "../types/schemas";
 import { useUserStore } from "./StoreHooks/UserStore";
+import { useStreamStore } from "./StoreHooks/useStreamStore";
 import { useMessageStore } from "./StoreHooks/useMessageStore";
 import { useChathistory } from "@/app/api/Queries/chatHistory";
 import { useChatStream } from "./useChatStream";
 import { NodeNextRequest } from "next/dist/server/base-http/node";
+import { appEvents } from "@/lib/GlobalServices";
 
 
 
@@ -22,13 +24,21 @@ export function useMessageHandling() {
   const { currentConversationId, setMessages, messages} = useMessageStore();
   const { data: fetchedMessages = [], isLoading, error, refetch } = useChathistory( currentConversationId, userId, sessionId );
   const [awaitingEvent, setAwaitingEvent] = useState<boolean>(false)
+  const { setText, clearText } = useStreamStore()
 
  
   const { sendJsonMessage, state } = useChatStream(
     userId && sessionId && currentConversationId ? wsUrl : null,
     {
-      onChunk: (data: unknown) => {
-        console.log("received chunk:", data);
+      onChunk: (data: any) => {
+        console.warn("received chunk:", data);
+        // Ensure data is an object and has the expected properties
+          appEvents.sendData('textEvents', {
+            conversationId: (data as any).conversationId,
+            text: state.text
+          });
+          console.warn("sent text to island")
+
       },
       onStart: () => {
         // Handle stream start if needed
@@ -46,8 +56,9 @@ export function useMessageHandling() {
             file_id: null,
             flags: {}
           };
-          setMessages((prev) => [...(prev || []), assistantMessage])
-        }      
+          setMessages((prev) => [...(prev || []), assistantMessage]);
+        }
+        clearText();      
       },
       onEvent: (data: any) => {
         console.log("received event:", data);
@@ -60,14 +71,14 @@ export function useMessageHandling() {
             content: typeof data.content === "string" ? data.content : JSON.stringify(data.content),            
             timestamp: new Date(),
             file_id: null,
-            flags: data
-          }
-          if (data.event === "wait_for_user") {
-            setAwaitingEvent(true)
-          } else {
-            setAwaitingEvent(false)
-          }
-          setMessages((prev) => [...(prev || []), eventMessage])
+            flags: { ...data }
+          };
+          appEvents.sendData('chatEvents', {
+            conversationId: data.conversation_id,
+            event: data.event,
+            data: data.content
+          });
+          setMessages((prev) => [...(prev || []), eventMessage]);
       },
     }
   );
@@ -114,6 +125,7 @@ export function useMessageHandling() {
       refetch();
     }
   }, [currentConversationId, refetch]);
+
 
   return {
     sendMessage,

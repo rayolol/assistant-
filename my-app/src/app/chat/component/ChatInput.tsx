@@ -7,6 +7,7 @@ import { FileUpload } from '@/components/chat/FileUploadComponent';  // lowercas
 import { FileUploadResponse } from '@/components/chat/fileUpload';
 import Image from 'next/image';
 import { useUserStore } from '@/app/hooks/StoreHooks/UserStore';
+import { appEvents } from '@/lib/GlobalServices';
 
 interface chatinputProps {
   isStreaming: boolean;
@@ -17,10 +18,11 @@ interface chatinputProps {
   sendUserFeedback: (message:string) => void
 }
 
-const ChatInput = ({ isStreaming, sendMessage, currentConversationId, response, awaitingEvent, sendUserFeedback }: chatinputProps) => {
+const ChatInput = ({ isStreaming, sendMessage, currentConversationId, sendUserFeedback }: chatinputProps) => {
   const [input, setInput] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [awaitingEvent, setAwaitingEvent] = useState(false)
 
   const [attachedFileURL, setAttachedFileURL] = useState<string | null>(null);
   const [fileName, setFileName]           = useState<string | null>(null);
@@ -28,8 +30,20 @@ const ChatInput = ({ isStreaming, sendMessage, currentConversationId, response, 
   const [fileId, setFileId] = useState<string | null>(null);
 
   useEffect(() => {
-    console.log("response in chatinput: ",response )
-  }, [response])
+    appEvents.listen('chatEvents', (e) => {
+      console.log("app event in chatinput:", e)
+      if(e) {
+        setAwaitingEvent(true)
+      }
+    })
+    return () => {
+      appEvents.off('chatEvents', () => {
+        console.log("closed chatEvent channel")
+      })
+    }
+  },[])
+
+  
   // When FileUpload finishes, grab the URL and file name
   const handleUploadComplete = (file: FileUploadResponse) => {
     setAttachedFileURL(file.file_url);
@@ -45,12 +59,12 @@ const ChatInput = ({ isStreaming, sendMessage, currentConversationId, response, 
       sendUserFeedback(input.trim());
       console.log("sent awaiting event")
       return;
+    } else {
+      sendMessage(currentConversationId!, input.trim(), fileId!);
+      console.log("currentconversationId:", currentConversationId);
     }
-    // send text and attachment together
-    sendMessage(currentConversationId, input.trim(), fileId );
-    console.log("currentconversationId:", currentConversationId);
-    // reset
     setInput('');
+    setAwaitingEvent(false)
     setAttachedFileURL(null);
     setFileName(null);
     setFileStatus('idle');

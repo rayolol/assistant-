@@ -13,7 +13,7 @@ const TypingIndicator: React.FC = () => {
 };
 
 export const DotIndicator: React.FC = () => {
-      console.log("DotIndicator rendered");
+
     return (
         <span className='h-5 w-5 rounded-full bg-white pulse z-10'/>
     )

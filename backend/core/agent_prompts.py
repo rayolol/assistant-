@@ -147,7 +147,7 @@ async def Streamed_agent_response(app_context: AppContext, context: Mem0Context,
                     print("event", event.item.raw_item)
                 elif event.item.type == "tool_call_output_item":
                     print(f"-- Tool output: {event.item.output}")
-                    yield f"\n\n:::event\n{{'title'=\"{event.item.raw_item}\", 'content'=\"{event.item.output}\"}}\n:::\n\n"
+                    yield f":::event{{title=\"{event.item.raw_item}\" content=\"{event.item.output}\"}}\n event\n:::"
                     
                 elif event.item.type == "message_output_item":
                     print(f"-- Message output:\n {ItemHelpers.text_message_output(event.item)}")

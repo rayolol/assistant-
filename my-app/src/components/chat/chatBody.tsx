@@ -4,7 +4,6 @@ import React, { useEffect, useState } from 'react';
 import { EmptyState } from './EmptyState';
 import { Message } from '@/app/types/schemas';
 import { StreamingAssistantMessage } from './AssistantMessage';
-import eventEmitter from '@/lib/EventEmitter';
 
 interface ChatBodyProps {
     messages: Message[];
@@ -17,27 +16,15 @@ interface ChatBodyProps {
 export const ChatBody = ({messages, isStreaming, response, username }: ChatBodyProps) => {
     const [chatEvent, setChatEvent] = useState<string | null>(null);
     
-    
-    useEffect(() => {
-        const handler = (event: any) => {
-            console.log("Received chat event:", event);
-            setChatEvent(event);
-        };
-        eventEmitter.on("chatEvent", handler);
-        return () => {
-            eventEmitter.off("chatEvent", handler);
-        };
-    }, []);
-
-    useEffect(() => {
-        console.log("response in chatbody: ", response)
-    }, [response])
 
    
     // Clear the chatEvent state when streaming is done
     useEffect(() => {
         if (!isStreaming) {
             setChatEvent(null);
+        }
+        if(isStreaming) {
+            console.log("isStreaming in chatWindow: ", isStreaming)
         }
     }, [isStreaming]);
 

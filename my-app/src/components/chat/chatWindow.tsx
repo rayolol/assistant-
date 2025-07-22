@@ -18,9 +18,7 @@ export const ChatWindow = ({ messages, isStreaming, response, error}: ChatWindow
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    console.log("response in chatwindow: ",response )
-  }, [response])
+ 
   useAutoScroll(messagesEndRef, isStreaming);
 
   return (  

@@ -1,5 +1,5 @@
 import useWebSocket, { ReadyState } from "react-use-websocket";
-import { startTransition, useReducer } from "react";
+import { startTransition, useReducer, useRef, useEffect } from "react";
 
 
 
@@ -42,9 +42,13 @@ type Action =
       text: "",
       streaming: false,
     });
-    console.log("📡 useChatStream mounted", wsUrl);
 
-  
+    // Store latest options in a ref
+    const optionsRef = useRef(options);
+    useEffect(() => {
+      optionsRef.current = options;
+    }, [options]);
+
     // Set up WS
     const { lastMessage, readyState, sendJsonMessage } = useWebSocket(wsUrl || "", {
       onOpen: () => console.log("WS open"),
@@ -57,19 +61,21 @@ type Action =
           switch (msg.type) {
             case "start":
               dispatch({ type: "START" });
-              options.onStart?.(msg)
+              optionsRef.current?.onStart?.(msg);
               break;
             case "chunk":
-              startTransition(() => dispatch({ type: "CHUNK", payload: msg.data.chunk }))
-              console.log("text: ", state.text)
-              options.onChunk?.(msg)
+              startTransition(() => {
+                dispatch({ type: "CHUNK", payload: msg.data.chunk });
+                console.log("chunk received:", msg.data.chunk);
+              });
+              optionsRef.current?.onChunk?.(msg);
               break;
             case "complete":
               dispatch({ type: "COMPLETE" });
-              options.onComplete?.(state.text);
+              optionsRef.current?.onComplete?.(state.text);
               break;
             case "event":
-              options.onEvent?.(msg);
+              optionsRef.current?.onEvent?.(msg);
               break;
             default:
                 console.log("unkown message type. got: ", msg)

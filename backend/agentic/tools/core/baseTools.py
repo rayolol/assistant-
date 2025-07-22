@@ -54,7 +54,7 @@ class BaseTool():
                     "conversation_id": context.context.conversation_id,
                     "type": "chunk",
                     "data": {
-                        "chunk": f"\n\n:::event\n{{'title'=\"wait_for_user\", 'content'=\"{message}\"}}\n:::\n\n"
+                        "chunk": f":::event{{title=\"{"wait_for_user"}\" content=\"{message}\"}}\nevent\n:::"
                     }
                 }))
                 

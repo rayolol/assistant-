@@ -1,6 +1,6 @@
 import { memo, startTransition } from 'react';
-import { MarkdownRenderer,StreamingMarkdownRenderer } from '@/lib/renderer';
-
+import { MarkdownRenderer, } from '@/lib/renderer';
+import {StreamingMarkdownRenderer} from "@/lib/StreamingMdRenderer"
 
 export const AssistantMessage = memo(({ message }: { message: string }) => {
     return (
@@ -14,7 +14,7 @@ export const AssistantMessage = memo(({ message }: { message: string }) => {
 
 AssistantMessage.displayName = 'AssistantMessage';
 
-export const StreamingAssistantMessage = memo(({ streamContent, isStreaming }: { streamContent: string, isStreaming: boolean }) => {
+export const StreamingAssistantMessage = ({ streamContent, isStreaming }: { streamContent: string, isStreaming: boolean }) => {
     return (
         <div className="flex justify-start p-4">
             <div className='p4 whitespace-pre-wrap'>
@@ -22,7 +22,7 @@ export const StreamingAssistantMessage = memo(({ streamContent, isStreaming }: {
             </div>
         </div>
     );
-});
+};
 
 StreamingAssistantMessage.displayName = 'StreamingAssistantMessage';
 
